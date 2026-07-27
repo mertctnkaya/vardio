@@ -18,9 +18,12 @@ export default function Calculations() {
 
   const [payrollDate, setPayrollDate] = useState(new Date());
   const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
-  const [fetchedLogs, setFetchedLogs] = useState<any[]>([]); 
+  const [fetchedLogs, setFetchedLogs] = useState<any[]>([]);
+  const [knownLeaveBalance, setKnownLeaveBalance] = useState('');
+  const [isSavingLeave, setIsSavingLeave] = useState(false);
+  const [leaveFeedback, setLeaveFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
-  // --- GERÇEK BORDRO GİRDİLERİ (Aylık Brüt Girişi SİLİNDİ) ---
+  // --- GERÇEK BORDRO GİRDİLERİ (Aylık Brüt Inputu Ayarlara Bağlandığı İçin Silindi) ---
   const [besDeduction, setBesDeduction] = useState('0'); // Varsayılan 0
   const [otherDeductions, setOtherDeductions] = useState('0');
 
@@ -34,7 +37,7 @@ export default function Calculations() {
     netKesintiler: { bes: 0, other: 0, total: 0 },
     hesabaYatanNet: 0,
     calculatedNightHours: 0,
-    stats: { payrollDays: 0, activeDays: 0, absentDays: 0, lateHours: 0, overtimeHours: 0, holidayWorkDays: 0 }
+    stats: { payrollDays: 0, activeDays: 0, passedDays: 0, absentDays: 0, lateHours: 0, overtimeHours: 0, holidayWorkDays: 0, annualLeaveDays: 0 }
   });
 
   const fetchWorkLogs = async () => {
@@ -56,9 +59,7 @@ export default function Calculations() {
     }
   };
 
-  // --- GECE SAATİ (20:00 - 06:00) HESAPLAMA YARDIMCISI ---
-  // DÜZELTME: Eskiden 22:00-06:00 kullanılıyordu; İş Kanunu m.69 ve şirket
-  // uygulamasındaki gerçek tanım 20:00-06:00 olduğu için eşik değiştirildi.
+  // --- GECE SAATİ (22:00 - 06:00) HESAPLAMA YARDIMCISI ---
   const calculateNightHours = (startTimeStr: string, durationHours: number) => {
     if (!startTimeStr || durationHours <= 0) return 0;
     const [h, m] = startTimeStr.split(':').map(Number);
@@ -67,21 +68,12 @@ export default function Calculations() {
 
     for (let i = 0; i < durationHours * 60; i++) {
       let minOfDay = (currentMin + i) % (24 * 60);
-      // Gece tanımı: 20:00 (1200. dk) ile 06:00 (360. dk) arası
-      if (minOfDay >= 1200 || minOfDay < 360) {
+      // Gece tanımı: 22:00 (1320. dk) ile 06:00 (360. dk) arası
+      if (minOfDay >= 1320 || minOfDay < 360) {
         nightMins++;
       }
     }
     return nightMins / 60;
-  };
-
-  // Bir HH:MM saatine dakika ekleyip yeni HH:MM saatini döndürür (gün aşımını da sarar)
-  const addMinutesToTime = (startTimeStr: string, minutesToAdd: number) => {
-    const [h, m] = startTimeStr.split(':').map(Number);
-    const total = (((h * 60 + m + minutesToAdd) % 1440) + 1440) % 1440;
-    const nh = Math.floor(total / 60);
-    const nm = Math.round(total % 60);
-    return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
   };
 
   // --- ANA BORDRO MOTORU (BRÜT -> NET) ---
@@ -97,7 +89,6 @@ export default function Calculations() {
 
     // KATSAYILAR (Ana veri AYARLARDAN OTOMATİK ÇEKİLİR)
     const dailyGross = Number(settings.daily_wage) || 0; 
-    // const monthlyGross = dailyGross * 30; // Ayarlardaki günlük brüt çarpı 30
     const baseWorkHours = Number(settings.base_work_hours) || 7.5; 
     const hourlyGross = dailyGross / baseWorkHours; 
     
@@ -120,9 +111,8 @@ export default function Calculations() {
     const isSaturdayWork = settings.is_saturday_workday || false;
     const MS_PER_WEEK = 1000 * 60 * 60 * 24 * 7;
 
-    let stats = { payrollDays: 30, activeDays: 0, absentDays: 0, lateHours: 0, overtimeHours: 0, holidayWorkDays: 0 };
+    let stats = { payrollDays: 30, activeDays: 0, passedDays: 0, absentDays: 0, lateHours: 0, overtimeHours: 0, holidayWorkDays: 0, annualLeaveDays: 0 };
     let calculatedNightHours = 0;
-    let inactiveDays = 0;
 
     const actualToday = new Date();
     actualToday.setHours(0, 0, 0, 0);
@@ -131,24 +121,19 @@ export default function Calculations() {
     for (let i = 1; i <= daysInMonth; i++) {
       const currentDate = new Date(year, month, i);
       
+      // İşe girişten önceki günler maaşa dahil edilmez
       if (currentDate < employmentStart) {
-        inactiveDays++;
         continue; 
+      }
+
+      stats.activeDays++;
+      // Bugün dahil, bu ay yaşanmış olan günleri say (Temmuz bug'ı çözümü)
+      if (currentDate <= actualToday) {
+        stats.passedDays++;
       }
 
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       const log = logsMap[dateKey];
-      const isFutureDay = currentDate > actualToday;
-
-      // DÜZELTME: Henüz yaşanmamış ve herhangi bir kaydı olmayan günler bordroya
-      // hiç dahil edilmez (ne kazanç ne kesinti). Sadece ileri tarihe önceden
-      // girilmiş (yıllık izin, ücretli izin, resmi tatil mesaisi gibi) kayıtlar
-      // dahil edilir; onlar zaten arayüzden sadece bu tür durumlar için açıktır.
-      if (isFutureDay && !log) {
-        continue;
-      }
-
-      stats.activeDays++;
       
       const dayOfWeek = currentDate.getDay();
       const isSunday = dayOfWeek === 0;
@@ -164,88 +149,63 @@ export default function Calculations() {
       
       // Vardiya Saatini Tespit Et
       let currentShiftStart = shiftStartTime;
-      let shiftDuration = baseWorkHours; 
+      // Gece saati hesaplanırken vardiyanın tam penceresi taranır (3'lü sistemde 8 saat)
+      let shiftPhysicalDuration = workType === '3-shift' ? 8 : (Number(settings.shift_duration) || 12); 
 
       if (workType === '3-shift') {
           const shiftIndex = ((deltaWeeks % 3) + 3) % 3;
           const [sh, sm] = shiftStartTime.split(':').map(Number);
-          if (shiftIndex === 1) { // Gece Vardiyası (Örn: 00:00)
+          if (shiftIndex === 1) { // Gece Vardiyası (00:00 - 08:00)
             currentShiftStart = `${String((sh + 16) % 24).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-          } else if (shiftIndex === 2) { // Akşam Vardiyası (Örn: 16:00)
+          } else if (shiftIndex === 2) { // Akşam Vardiyası (16:00 - 24:00)
             currentShiftStart = `${String((sh + 8) % 24).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
           }
       } else if (workType === '2-shift') {
           const shiftIndex = ((deltaWeeks % 2) + 2) % 2;
-          shiftDuration = Number(settings.shift_duration) || 12;
           const [sh, sm] = shiftStartTime.split(':').map(Number);
           if (shiftIndex === 1) {
             currentShiftStart = `${String((sh + 12) % 24).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
           }
       }
 
-      // customStart/customDuration verilmezse normal vardiyayı baz alır.
-      const processNightHours = (customStart?: string, customDuration?: number) => {
-          const start = customStart ?? currentShiftStart;
-          const duration = customDuration ?? shiftDuration;
-          if (duration > 0) {
-            calculatedNightHours += calculateNightHours(start, duration);
-          }
+      const processNightHours = () => {
+          calculatedNightHours += calculateNightHours(currentShiftStart, shiftPhysicalDuration);
       };
 
       if (log) {
-        if (log.status === 'absent') {
-          stats.absentDays++;
-        }
-        else if (log.status === 'late') {
-          // Geç kalma: kayıp saat vardiyanın BAŞINDA -> gerçek çalışma penceresi
-          // kaymış başlangıçlı ve kısalmış sürelidir.
-          const lateH = Number(log.hours) || 0;
-          stats.lateHours += lateH;
-          const workedDuration = Math.max(0, shiftDuration - lateH);
-          if (!isOffDay && workedDuration > 0) {
-            const actualStart = addMinutesToTime(currentShiftStart, lateH * 60);
-            processNightHours(actualStart, workedDuration);
-          }
-        }
-        else if (log.status === 'partial_leave') {
-          // Saatlik izin / erken çıkma: kayıp saat vardiyanın SONUNDA -> aynı
-          // başlangıç, kısalmış süre.
-          const missingH = Number(log.hours) || 0;
-          stats.lateHours += missingH;
-          const workedDuration = Math.max(0, shiftDuration - missingH);
-          if (!isOffDay && workedDuration > 0) {
-            processNightHours(currentShiftStart, workedDuration);
-          }
-        }
+        if (log.status === 'absent') stats.absentDays++;
+        else if (log.status === 'late' || log.status === 'partial_leave') {
+          stats.lateHours += (Number(log.hours) || 0);
+          if (!isOffDay) processNightHours();
+        } 
         else if (log.status === 'overtime') {
-          // Fazla mesai, normal vardiyanın hemen ardından yapılır varsayılır;
-          // bu yüzden gece hesaplaması (vardiya + fazla mesai) toplam süresi
-          // üzerinden yapılır.
-          const otH = Number(log.hours) || 0;
-          stats.overtimeHours += otH;
-          if (!isOffDay) processNightHours(currentShiftStart, shiftDuration + otH);
+          stats.overtimeHours += (Number(log.hours) || 0);
+          if (!isOffDay) processNightHours();
         } 
         else if (log.status === 'holiday_work') {
           stats.holidayWorkDays++;
           if (!isOffDay) processNightHours();
         }
-        else if (log.status === 'normal') {
+        // Eksik olan kritik satır:
+        else if (log.status === 'annual_leave') {
+          stats.annualLeaveDays++;
+        }
+        else if (log.status === 'normal' || log.status === 'leave') {
           if (!isOffDay) processNightHours();
         }
-        // 'leave' (ücretli izin/rapor) ve 'annual_leave' (yıllık izin) günlerinde
-        // fiilen çalışma olmadığı için gece primi eklenmez.
       } else {
-        // Buraya sadece geçmiş/bugünkü günler düşer (gelecek+kayıtsız günler yukarıda elendi)
-        if (!isOffDay) processNightHours();
+        // Log yoksa sadece bugüne kadar yaşanmış günlerin gece saatlerini ekle
+        if (currentDate <= actualToday) {
+          if (!isOffDay) processNightHours();
+        }
       }
     }
 
     // 2. ADIM: BRÜT HAKEDİŞLER
-    // DÜZELTME: Bordro gün sayısı artık ayın TAMAMI değil, işe giriş tarihinden
-    // itibaren FİİLEN HESABA KATILAN gün sayısıdır (geçmiş + bugün + ileri
-    // tarihli kayıtlı günler). Devam eden bir ay için henüz yaşanmamış günler
-    // hiç sayılmaz (Örn: 31 Temmuz'a kadar değil, sadece bugüne kadar).
-    const basePayrollDays = Math.min(30, stats.activeDays);
+    // Gelecek aylarda 0, geçmiş aylarda aktif gün kadar, içinde bulunduğumuz ayda sadece yaşanmış günler kadar hesapla
+    const isPastMonth = (year < actualToday.getFullYear()) || (year === actualToday.getFullYear() && month < actualToday.getMonth());
+    const basePayrollDays = isPastMonth ? Math.min(30, stats.activeDays) : Math.min(30, stats.passedDays);
+    
     const baseGrossPay = basePayrollDays * dailyGross;
     
     const overtimeGrossPay = stats.overtimeHours * hourlyGross * overtimeMultiplier;
@@ -292,7 +252,7 @@ export default function Calculations() {
       netMaaş,
       netKesintiler: { bes, other: others, total: bes + others },
       hesabaYatanNet,
-      calculatedNightHours: Number(calculatedNightHours.toFixed(2)),
+      calculatedNightHours,
       stats: { ...stats, payrollDays: basePayrollDays }
     });
   };
@@ -344,18 +304,47 @@ export default function Calculations() {
     });
   };
 
+  // YILLIK İZİN BAKİYE EŞİTLEME FONKSİYONU
+  const saveLeaveBalance = async (earnedLeave: number) => {
+    if (!user || knownLeaveBalance === '') return;
+    setIsSavingLeave(true);
+    
+    const val = Number(knownLeaveBalance);
+    const pastUsed = Math.max(0, earnedLeave - val);
+
+    // upsert yerine update kullanıyoruz
+    const { error, data } = await supabase.from('user_settings')
+      .update({ 
+        past_used_leave: pastUsed, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('user_id', user.id)
+      .select().single();
+
+    if (!error && data) {
+      setSettings(data);
+      setLeaveFeedback({ type: 'success', message: 'İzin bakiyeniz eşitlendi!' });
+      setTimeout(() => { setLeaveFeedback(null); setKnownLeaveBalance(''); }, 3000);
+    } else {
+      setLeaveFeedback({ type: 'error', message: 'Hata oluştu: ' + (error?.message || '') });
+      setTimeout(() => setLeaveFeedback(null), 3000);
+    }
+    setIsSavingLeave(false);
+  };
+
+  // ARAÇLAR İÇİN DÖNÜŞTÜRÜCÜ VE KATSAYI KAYIT İŞLEMİ
   const saveToSettings = async () => {
     if (!user || !calcResults) return;
     setIsSavingSettings(true);
     
-    const payload = {
-      user_id: user.id,
-      daily_wage: calcResults.dailyGross,
-      hourly_overtime: calcResults.overtimeGross,
-      updated_at: new Date().toISOString()
-    };
-
-    const { error, data } = await supabase.from('user_settings').upsert(payload).select().single();
+    const { error, data } = await supabase.from('user_settings')
+      .update({
+        daily_wage: calcResults.dailyGross,
+        hourly_overtime: calcResults.overtimeGross,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', user.id)
+      .select().single();
 
     if (!error && data) {
       setSettings(data);
@@ -366,7 +355,7 @@ export default function Calculations() {
         setCalcTargetValue('');
       }, 3000);
     } else {
-      setFeedback({ type: 'error', message: 'Kaydedilirken hata oluştu.' });
+      setFeedback({ type: 'error', message: 'Kaydedilirken hata oluştu: ' + (error?.message || '') });
       setTimeout(() => setFeedback(null), 3000);
     }
     setIsSavingSettings(false);
@@ -401,7 +390,7 @@ export default function Calculations() {
 
           <div className="bg-[#1e2329] p-5 rounded-xl border border-base-300 shadow-md grid grid-cols-1 sm:grid-cols-2 gap-4">
              <div>
-               <label className="text-xs font-bold text-base-content/60 block mb-1">BES Kesintisi</label>
+               <label className="text-xs font-bold text-base-content/60 block mb-1">BES veya Özel Kesinti (₺)</label>
                <div className="relative">
                  <span className="absolute left-3 top-2 text-base-content/50">₺</span>
                  <input type="number" placeholder="Yoksa 0 bırakın" value={besDeduction} onChange={(e) => setBesDeduction(e.target.value)} className="input input-bordered w-full bg-base-100 pl-7" />
@@ -449,17 +438,21 @@ export default function Calculations() {
                       <span className="font-bold text-base-content">+{payrollData.incomes.baseMonth.toFixed(2)} ₺</span>
                     </div>
                     <div className="flex justify-between items-end border-b border-base-300/50 pb-2">
-                      <p className="text-base-content/80 font-medium">Gece Primi (20:00-06:00 / {payrollData.calculatedNightHours} Saat)</p>
+                      <p className="text-base-content/80 font-medium">Gece Primi (22:00-06:00 / {payrollData.calculatedNightHours} Saat)</p>
                       <span className="font-bold text-emerald-400">+{payrollData.incomes.nightBonus.toFixed(2)} ₺</span>
                     </div>
-                    <div className="flex justify-between items-end border-b border-base-300/50 pb-2">
-                      <p className="text-base-content/80 font-medium">Fazla Mesai ({payrollData.stats.overtimeHours} Saat)</p>
-                      <span className="font-bold text-emerald-400">+{payrollData.incomes.overtime.toFixed(2)} ₺</span>
-                    </div>
-                    <div className="flex justify-between items-end pb-2">
-                      <p className="text-base-content/80 font-medium">Resmi Tatil ({payrollData.stats.holidayWorkDays} Gün)</p>
-                      <span className="font-bold text-emerald-400">+{payrollData.incomes.holidayWork.toFixed(2)} ₺</span>
-                    </div>
+                    {payrollData.stats.overtimeHours > 0 && (
+                      <div className="flex justify-between items-end border-b border-base-300/50 pb-2">
+                        <p className="text-base-content/80 font-medium">Fazla Mesai ({payrollData.stats.overtimeHours} Saat)</p>
+                        <span className="font-bold text-emerald-400">+{payrollData.incomes.overtime.toFixed(2)} ₺</span>
+                      </div>
+                    )}
+                    {payrollData.stats.holidayWorkDays > 0 && (
+                      <div className="flex justify-between items-end pb-2">
+                        <p className="text-base-content/80 font-medium">Resmi Tatil ({payrollData.stats.holidayWorkDays} Gün)</p>
+                        <span className="font-bold text-emerald-400">+{payrollData.incomes.holidayWork.toFixed(2)} ₺</span>
+                      </div>
+                    )}
                     
                     <div className="pt-2 border-t border-base-300 flex justify-between items-center text-sm bg-base-200 p-2 rounded">
                       <span className="font-bold">Toplam Brüt Hakediş</span>
@@ -539,37 +532,95 @@ export default function Calculations() {
 
       {/* YILLIK İZİN SEKME İÇERİĞİ */}
       {activeTab === 'annual_leave' && (
-        <div className="w-full max-w-5xl bg-[#1e2329] rounded-xl border border-base-300 p-8 text-center animate-fade-in">
-           {/* Önceki Yıllık İzin kodları tamamen aynı */}
-           <h3 className="text-2xl font-bold text-purple-400 mb-6">Yıllık İzin Panosu</h3>
+        <div className="w-full max-w-5xl space-y-6 animate-fade-in">
            {(() => {
               const start = new Date(settings?.employment_start_date || '2026-06-09');
               const today = new Date();
               const yearsWorked = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+              
               let earnedLeave = 0;
               for (let i = 1; i <= yearsWorked; i++) {
                  if (i <= 5) earnedLeave += 14;
                  else if (i < 15) earnedLeave += 20;
                  else earnedLeave += 26;
               }
-              const usedLeave = 0; 
-              const remainingLeave = earnedLeave - usedLeave;
+
+              // Bir Sonraki Hakediş Tarihi
+              const nextLeaveDate = new Date(start);
+              nextLeaveDate.setFullYear(start.getFullYear() + yearsWorked + 1);
+              const nextLeaveDays = (yearsWorked + 1) <= 5 ? 14 : ((yearsWorked + 1) < 15 ? 20 : 26);
+
+              // Veritabanından gelen geçmiş izin kullanımları ve bu ay takvimden gelenler
+              const pastUsed = settings?.past_used_leave || 0;
+              const usedThisMonth = payrollData.stats.annualLeaveDays || 0; // Bu ayki takvim işaretlemeleri
+              const totalUsedLeave = pastUsed + usedThisMonth;
+              const remainingLeave = earnedLeave - totalUsedLeave;
 
               return (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-[#16191d] p-6 rounded-xl border border-base-300">
-                    <p className="text-base-content/60 mb-2">Hakediş Süresi</p>
-                    <p className="text-4xl font-bold text-base-content">{yearsWorked} Yıl</p>
+                <>
+                  <div className="bg-[#1e2329] rounded-xl border border-base-300 p-8 shadow-lg">
+                    <div className="flex justify-between items-end mb-6">
+                      <h3 className="text-2xl font-bold text-pink-400">Yıllık İzin Durumu</h3>
+                      <div className="text-right">
+                        <p className="text-xs text-base-content/50">Sonraki Hakediş Tarihi</p>
+                        <p className="font-bold text-base-content/80">{nextLeaveDate.toLocaleDateString('tr-TR')} <span className="text-emerald-400">(+{nextLeaveDays} Gün)</span></p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-[#16191d] p-5 rounded-xl border border-base-300">
+                        <p className="text-xs text-base-content/60 font-bold mb-1">Mevcut Kıdem</p>
+                        <p className="text-3xl font-bold text-base-content">{yearsWorked} <span className="text-lg">Yıl</span></p>
+                      </div>
+                      <div className="bg-[#16191d] p-5 rounded-xl border border-base-300">
+                        <p className="text-xs text-base-content/60 font-bold mb-1">Yasal Toplam Hakediş</p>
+                        <p className="text-3xl font-bold text-emerald-400">{earnedLeave} <span className="text-lg">Gün</span></p>
+                      </div>
+                      <div className="bg-[#16191d] p-5 rounded-xl border border-base-300">
+                        <p className="text-xs text-base-content/60 font-bold mb-1">Toplam Kullanılan</p>
+                        <p className="text-3xl font-bold text-warning">{totalUsedLeave} <span className="text-lg">Gün</span></p>
+                      </div>
+                      <div className="bg-pink-900/10 p-5 rounded-xl border border-pink-500/30 ring-2 ring-pink-500/20">
+                        <p className="text-xs text-pink-400/80 font-bold mb-1">Kalan Net İzin Bakiyesi</p>
+                        <p className="text-3xl font-black text-pink-400">{remainingLeave} <span className="text-lg">Gün</span></p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-[#16191d] p-6 rounded-xl border border-base-300">
-                    <p className="text-base-content/60 mb-2">Kullanılan İzin</p>
-                    <p className="text-4xl font-bold text-warning">{usedLeave} Gün</p>
+
+                  {/* BAKİYE EŞİTLEME PANELİ */}
+                  <div className="bg-[#16191d] rounded-xl border border-base-300 p-6 shadow-md flex flex-col md:flex-row gap-6 items-center">
+                    <div className="flex-1">
+                      <h4 className="text-lg font-bold text-base-content mb-1">Bakiye Eşitleme Aracı</h4>
+                      <p className="text-sm text-base-content/60">
+                        Eğer sistemdeki kalan izniniz gerçekle uyuşmuyorsa, şirketinize sorarak öğrendiğiniz <strong>güncel kalan izin bakiyenizi</strong> girin. Sistem geçmiş kullanımlarınızı otomatik olarak hesaplayıp veritabanını eşitleyecektir.
+                      </p>
+                    </div>
+                    <div className="flex-1 w-full flex flex-col gap-2">
+                      <div className="flex gap-2 w-full">
+                        <input 
+                          type="number" 
+                          min="0"
+                          className="input p-2 input-bordered bg-base-200 flex-1 focus:ring-2 focus:ring-pink-500" 
+                          placeholder="Şu anki gerçek bakiyem (Gün)"
+                          value={knownLeaveBalance}
+                          onChange={(e) => setKnownLeaveBalance(e.target.value)}
+                        />
+                        <button 
+                          className="btn p-4 bg-pink-600 hover:bg-pink-700 text-white border-none"
+                          onClick={() => saveLeaveBalance(earnedLeave)}
+                          disabled={isSavingLeave || knownLeaveBalance === ''}
+                        >
+                          {isSavingLeave ? <span className="loading loading-spinner"></span> : 'Eşitle'}
+                        </button>
+                      </div>
+                      {leaveFeedback && (
+                        <div className={`p-2 rounded-lg text-xs font-bold text-center animate-fade-in ${leaveFeedback.type === 'success' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                          {leaveFeedback.message}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="bg-[#16191d] p-6 rounded-xl border border-base-300 ring-2 ring-purple-500/50">
-                    <p className="text-base-content/60 mb-2">Kalan İzin Bakiyesi</p>
-                    <p className="text-4xl font-bold text-purple-400">{remainingLeave} Gün</p>
-                  </div>
-                </div>
+                </>
               );
            })()}
         </div>

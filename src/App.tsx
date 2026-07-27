@@ -37,86 +37,136 @@ function Layout() {
     if (data) useAppStore.getState().setSettings(data);
   };
 
-  const closeDropdown = () => {
-    const elem = document.activeElement as HTMLElement;
-    if (elem) elem.blur();
+  // Çekmece menüyü linke tıklayınca otomatik kapatmak için
+  const closeDrawer = () => {
+    const drawer = document.getElementById('mobile-drawer') as HTMLInputElement;
+    if (drawer) drawer.checked = false;
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    closeDropdown();
+    closeDrawer();
     navigate('/login');
   };
 
   return (
-    <div className="min-h-screen bg-base-300 flex flex-col items-center">
-      <div className="navbar bg-base-100 shadow-xl mb-8 w-full z-50">
-        <div className="navbar-start">
-          <div className="dropdown">
-            <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="drawer">
+      <input id="mobile-drawer" type="checkbox" className="drawer-toggle" />
+      
+      <div className="drawer-content flex flex-col min-h-screen bg-base-300 items-center">
+        {/* === ÜST NAVBAR === */}
+        <div className="navbar bg-base-100 shadow-xl mb-6 sm:mb-8 w-full z-10 px-2 sm:px-4">
+          <div className="navbar-start">
+            <label htmlFor="mobile-drawer" className="btn btn-ghost lg:hidden cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-base-content" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
               </svg>
-            </div>
-            
-            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 text-base-content border border-base-300">
-              <li><Link to="/" onClick={closeDropdown}>Güncel Vardiya</Link></li>
-              <li><Link to="/worktime" onClick={closeDropdown}>Mesai Takvimim</Link></li>
-              <li><Link to="/next-weeks" onClick={closeDropdown}>Gelecek Haftalar</Link></li>
-              <li><Link to="/calculations" onClick={closeDropdown}>Hesaplamalar</Link></li>
-              <li><Link to="/settings" onClick={closeDropdown}>Ayarlar</Link></li>
-              <div className="divider my-1"></div>
-              
-              {user ? (
-                <>
-                  <li className="menu-title px-4 py-1 text-xs opacity-50">Hesap</li>
-                  <li className="px-4 py-2 font-bold text-indigo-400">{user.user_metadata?.name}</li>
-                  <li><button onClick={handleLogout} className="text-error">Çıkış Yap</button></li>
-                </>
-              ) : (
-                <>
-                  <li><Link to="/login" onClick={closeDropdown} className="text-indigo-400 font-bold">Giriş Yap</Link></li>
-                  <li><Link to="/register" onClick={closeDropdown}>Kayıt Ol</Link></li>
-                </>
-              )}
+            </label>
+            <Link to="/" className="btn btn-ghost text-xl text-indigo-500 font-black tracking-wide ml-1 lg:ml-0">
+              Vardiyake
+            </Link>
+          </div>
+          
+          <div className="navbar-center hidden lg:flex">
+            <ul className="menu menu-horizontal px-1 font-medium text-base-content gap-1">
+              <li><Link to="/" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Güncel Vardiya</Link></li>
+              <li><Link to="/worktime" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Mesai Takvimim</Link></li>
+              <li><Link to="/next-weeks" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Gelecek Haftalar</Link></li>
+              <li><Link to="/calculations" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Hesaplamalar</Link></li>
+              <li><Link to="/settings" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Ayarlar</Link></li>
             </ul>
           </div>
-          <Link to="/" className="btn btn-ghost text-xl text-indigo-500 font-black tracking-wide">Vardiyake</Link>
+          
+          <div className="navbar-end hidden lg:flex gap-3 pr-2">
+            {user ? (
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-base-content/80 border border-base-300 bg-base-200 px-3 py-1.5 rounded-full">
+                  {user.user_metadata?.name}
+                </span>
+                <button onClick={handleLogout} className="btn btn-sm btn-outline hover:bg-red-600 hover:text-white border-red-500/30 text-red-400 transition-colors">
+                  Çıkış
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-ghost btn-sm text-base-content hover:bg-base-200">Giriş Yap</Link>
+                <Link to="/register" className="btn btn-sm bg-indigo-600 hover:bg-indigo-700 text-white border-none transition-colors shadow-lg shadow-indigo-900/50">
+                  Kayıt Ol
+                </Link>
+              </>
+            )}
+          </div>
         </div>
-        
-        <div className="navbar-center hidden lg:flex">
-          <ul className="menu menu-horizontal px-1 font-medium text-base-content">
-            <li><Link to="/">Güncel Vardiya</Link></li>
-            <li><Link to="/worktime">Mesai Takvimim</Link></li>
-            <li><Link to="/next-weeks">Gelecek Haftalar</Link></li>
-            <li><Link to="/calculations">Hesaplamalar</Link></li>
-            <li><Link to="/settings">Ayarlar</Link></li>
-          </ul>
+
+        {/* === SAYFA İÇERİĞİ (OUTLET) === */}
+        {/* flex-grow sınıfı eklendi, böylece içerik az olsa bile footer her zaman en alta itilir */}
+        <div className="w-full max-w-5xl px-4 pb-12 flex flex-col items-center flex-grow">
+          <Outlet context={shiftContext} />
         </div>
-        
-        <div className="navbar-end hidden lg:flex gap-3 pr-2">
+
+        {/* === FOOTER (ALT BİLGİ) === */}
+        <footer className="w-full bg-[#16191d] border-t border-base-300 py-4 mt-auto z-10">
+          <div className="max-w-5xl mx-auto px-6 flex justify-between items-center">
+            {/* Sol Boşluk (Ortalamak İçin) */}
+            <div className="flex-1 hidden sm:block"></div>
+            
+            {/* Orta - İmza */}
+            <div className="flex-1 text-left sm:text-center text-sm font-medium text-base-content/50">
+              made by <span className="text-indigo-500 font-black tracking-wide">m3rt</span>
+            </div>
+
+            {/* Sağ - İletişim / Instagram */}
+            <div className="flex-1 flex justify-end">
+              <a 
+                href="https://instagram.com/merutou" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-base-content/50 hover:text-pink-500 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                </svg>
+                <span className="text-sm font-semibold tracking-wide">@merutou</span>
+              </a>
+            </div>
+          </div>
+        </footer>
+      </div> 
+      
+      {/* === MOBİL ÇEKMECE MENÜ (DRAWER SIDEBAR) === */}
+      <div className="drawer-side z-50">
+        <label htmlFor="mobile-drawer" aria-label="close sidebar" className="drawer-overlay backdrop-blur-sm bg-black/40"></label>
+        <ul className="menu p-6 w-[80vw] max-w-sm min-h-full bg-base-100 text-base-content gap-2 shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-base-300">
+            <span className="text-2xl font-black text-indigo-500 tracking-wide">Vardiyake</span>
+            <label htmlFor="mobile-drawer" className="btn btn-square btn-ghost btn-sm text-base-content/60 hover:text-base-content">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </label>
+          </div>
+
+          <li><Link to="/" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Güncel Vardiya</Link></li>
+          <li><Link to="/worktime" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Mesai Takvimim</Link></li>
+          <li><Link to="/next-weeks" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Gelecek Haftalar</Link></li>
+          <li><Link to="/calculations" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Hesaplamalar</Link></li>
+          <li><Link to="/settings" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Ayarlar</Link></li>
+          
+          <div className="divider mt-4 mb-2"></div>
+          
           {user ? (
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-semibold text-base-content/80">
-                {user.user_metadata?.name}
-              </span>
-              <button onClick={handleLogout} className="btn btn-sm btn-outline btn-error">
-                Çıkış
-              </button>
+            <div className="mt-auto flex flex-col gap-4 pb-4">
+              <div className="bg-[#1e2329] p-5 rounded-2xl text-center border border-base-300">
+                <p className="text-xs text-base-content/50 uppercase font-bold tracking-widest mb-1.5">KULLANICI</p>
+                <p className="font-bold text-indigo-400 text-xl">{user.user_metadata?.name}</p>
+              </div>
+              <button onClick={handleLogout} className="btn bg-red-900/20 hover:bg-red-600 text-red-400 hover:text-white border-none w-full shadow-sm rounded-xl text-lg h-12">Çıkış Yap</button>
             </div>
           ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost btn-sm text-base-content hover:bg-base-200">Giriş Yap</Link>
-              <Link to="/register" className="btn btn-sm bg-indigo-600 hover:bg-indigo-700 text-white border-none transition-colors shadow-lg shadow-indigo-900/50">
-                Kayıt Ol
-              </Link>
-            </>
+            <div className="mt-auto flex flex-col gap-3 pb-4">
+              <Link to="/login" onClick={closeDrawer} className="btn btn-outline border-indigo-500/30 hover:bg-indigo-500/10 text-indigo-400 w-full rounded-xl text-lg h-12">Giriş Yap</Link>
+              <Link to="/register" onClick={closeDrawer} className="btn bg-indigo-600 hover:bg-indigo-700 text-white border-none w-full shadow-lg shadow-indigo-900/40 rounded-xl text-lg h-12">Kayıt Ol</Link>
+            </div>
           )}
-        </div>
-      </div>
-
-      <div className="w-full max-w-4xl px-4 pb-8">
-        <Outlet context={shiftContext} />
+        </ul>
       </div>
     </div>
   );

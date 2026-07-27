@@ -7,27 +7,56 @@ interface DayDetail {
   date: Date;
   shiftName: string;
   isNightShift: boolean;
-  isOffDay: boolean; 
+  isOffDay: boolean;
   isPast: boolean;
   isCurrentMonth: boolean;
   shiftId: number;
 }
 
+export const TURKISH_HOLIDAYS_2026: Record<string, string> = {
+  "2026-01-01": "Yılbaşı",
+  "2026-03-19": "Ramazan Bayramı Arifesi",
+  "2026-03-20": "Ramazan Bayramı 1. Gün",
+  "2026-03-21": "Ramazan Bayramı 2. Gün",
+  "2026-03-22": "Ramazan Bayramı 3. Gün",
+  "2026-04-23": "23 Nisan Ulusal Egemenlik Bayramı",
+  "2026-05-01": "1 Mayıs Emek ve Dayanışma Günü",
+  "2026-05-19": "19 Mayıs Gençlik ve Spor Bayramı",
+  "2026-05-26": "Kurban Bayramı Arifesi",
+  "2026-05-27": "Kurban Bayramı 1. Gün",
+  "2026-05-28": "Kurban Bayramı 2. Gün",
+  "2026-05-29": "Kurban Bayramı 3. Gün",
+  "2026-05-30": "Kurban Bayramı 4. Gün",
+  "2026-07-15": "15 Temmuz Demokrasi Bayramı",
+  "2026-08-30": "30 Ağustos Zafer Bayramı",
+  "2026-10-29": "29 Ekim Cumhuriyet Bayramı"
+};
+
 export default function WorktimeCalendar() {
   const { settings, user } = useAppStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [logHours, setLogHours] = useState(''); 
+  const [logHours, setLogHours] = useState('');
 
   const [selectedDay, setSelectedDay] = useState<DayDetail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   const [dayStatus, setDayStatus] = useState(''); // DÜZELTME: Artık varsayılan olarak BOMBOŞ geliyor
   const [noteText, setNoteText] = useState('');
 
   const [baseDate, setBaseDate] = useState(new Date());
-  
+
   const [workLogs, setWorkLogs] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
+
+  // Resmi tatil popup'ı için state
+  // const [activeHolidayPopup, setActiveHolidayPopup] = useState<string | null>(null);
+
+  //  Tatil rozetine tıklandığında çalışacak fonksiyon
+  // const handleHolidayClick = (e: React.MouseEvent, holidayName: string) => {
+  //   e.stopPropagation(); // Tıklamanın alt katmandaki günü (modalı) açmasını engeller
+  //   setActiveHolidayPopup(holidayName);
+  //   setTimeout(() => setActiveHolidayPopup(null), 5000); // 5 saniye sonra otomatik kapanır
+  // };
 
   const actualToday = new Date();
   actualToday.setHours(0, 0, 0, 0);
@@ -36,14 +65,14 @@ export default function WorktimeCalendar() {
   const currentMonth = baseDate.getMonth();
 
   const employmentStartDate = useMemo(() => {
-    return settings?.employment_start_date 
-      ? new Date(settings.employment_start_date + 'T00:00:00') 
+    return settings?.employment_start_date
+      ? new Date(settings.employment_start_date + 'T00:00:00')
       : new Date('2026-06-09T00:00:00');
   }, [settings]);
-  
+
   const epochDate = useMemo(() => {
-    return settings?.shift_epoch_date 
-      ? new Date(settings.shift_epoch_date + 'T00:00:00') 
+    return settings?.shift_epoch_date
+      ? new Date(settings.shift_epoch_date + 'T00:00:00')
       : new Date('2026-07-06T00:00:00');
   }, [settings]);
 
@@ -82,9 +111,9 @@ export default function WorktimeCalendar() {
     const dayOfWeek = date.getDay();
     const isSunday = dayOfWeek === 0;
     const isSaturday = dayOfWeek === 6;
-    
-    const isOffDay = workType === 'fixed' 
-      ? (isSunday || (!settings?.is_saturday_workday && isSaturday)) 
+
+    const isOffDay = workType === 'fixed'
+      ? (isSunday || (!settings?.is_saturday_workday && isSaturday))
       : isSunday;
 
     const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -94,10 +123,10 @@ export default function WorktimeCalendar() {
 
     const diffMs = monday.getTime() - epochDate.getTime();
     const deltaWeeks = Math.floor(diffMs / MS_PER_WEEK);
-    
+
     let shiftIndex = 0;
     if (workType === '3-shift') shiftIndex = ((deltaWeeks % 3) + 3) % 3;
-    else if (workType === '2-shift') shiftIndex = ((deltaWeeks % 2) + 2) % 2; 
+    else if (workType === '2-shift') shiftIndex = ((deltaWeeks % 2) + 2) % 2;
 
     return {
       id: shiftIndex,
@@ -110,7 +139,7 @@ export default function WorktimeCalendar() {
   const generateCalendar = () => {
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
     const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
-    
+
     let startDayOfWeek = firstDayOfMonth.getDay();
     startDayOfWeek = startDayOfWeek === 0 ? 7 : startDayOfWeek;
 
@@ -133,7 +162,7 @@ export default function WorktimeCalendar() {
   const calendarDays = generateCalendar();
 
   const handleDayClick = (dayData: DayDetail, isBeforeEmployment: boolean) => {
-    if (isBeforeEmployment) return; 
+    if (isBeforeEmployment) return;
 
     if (!user) {
       setShowAuthModal(true);
@@ -144,11 +173,11 @@ export default function WorktimeCalendar() {
     const existingLog = workLogs[dateKey];
 
     setSelectedDay(dayData);
-    
+
     // DÜZELTME: Veritabanında kayıt yoksa bomboş ('') bırak. Kullanıcı kendi seçecek.
-    setDayStatus(existingLog?.status || ''); 
+    setDayStatus(existingLog?.status || '');
     setNoteText(existingLog?.note || '');
-    setLogHours(existingLog?.hours ? existingLog.hours.toString() : ''); 
+    setLogHours(existingLog?.hours ? existingLog.hours.toString() : '');
     setIsModalOpen(true);
   };
 
@@ -157,7 +186,7 @@ export default function WorktimeCalendar() {
     if (status === 'overtime') setLogHours('3');
     else if (status === 'late') setLogHours('1');
     else if (status === 'partial_leave') setLogHours('1');
-    else setLogHours(''); 
+    else setLogHours('');
   };
 
   // YENİ: Yanlış kaydedilmiş günü veritabanından tamamen silme fonksiyonu
@@ -185,7 +214,7 @@ export default function WorktimeCalendar() {
 
   const handleSaveLog = async () => {
     if (!user || !selectedDay) return;
-    
+
     // DÜZELTME: Boş kaydetmeye çalışırsa engelle
     if (!dayStatus) {
       alert("Lütfen kaydetmeden önce bir 'Günlük Durum' seçin.");
@@ -199,7 +228,7 @@ export default function WorktimeCalendar() {
       log_date: dateKey,
       status: dayStatus,
       note: noteText,
-      hours: Number(logHours) || 0 
+      hours: Number(logHours) || 0
     };
 
     const { data, error } = await supabase
@@ -223,7 +252,7 @@ export default function WorktimeCalendar() {
 
   return (
     <div className="flex flex-col items-center animate-fade-in w-full pb-10">
-      
+
       <div className="w-full max-w-4xl flex flex-col sm:flex-row justify-between items-center mb-6 px-2 gap-4">
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-base-content min-w-[200px] text-center sm:text-left">
@@ -253,53 +282,76 @@ export default function WorktimeCalendar() {
             const isPast = item.date < actualToday;
             const isToday = item.date.toDateString() === actualToday.toDateString();
             const isBeforeEmployment = item.date < employmentStartDate;
-            const dateKey = item.date.toISOString().split('T')[0];
-            const logStatus = workLogs[dateKey]?.status; 
-            
+
+            // DÜZELTME: Timezone hatasını engellemek için lokal tarihi alıyoruz
+            const y = item.date.getFullYear();
+            const m = String(item.date.getMonth() + 1).padStart(2, '0');
+            const d = String(item.date.getDate()).padStart(2, '0');
+            const dateKeyStr = `${y}-${m}-${d}`;
+
+            // Tatil objesinden bugünün adını çekiyoruz (Yoksa undefined döner)
+            const holidayName = TURKISH_HOLIDAYS_2026[dateKeyStr];
+            const logStatus = workLogs[dateKeyStr]?.status;
+
             let cellBg = "bg-[#1e2329] hover:bg-[#2a3038] cursor-pointer";
-            let textColor = "text-white"; 
-            
+            let textColor = "text-white";
+
             if (isBeforeEmployment) {
               cellBg = "bg-[#1e2329] opacity-30 cursor-not-allowed";
               textColor = "text-white/50";
             } else if (!item.isCurrentMonth) {
               cellBg = "bg-[#16191d] cursor-pointer hover:bg-[#1e2329]";
-              textColor = "text-white/50"; 
+              textColor = "text-white/50";
             } else if (logStatus) {
-              if (logStatus === 'overtime') { cellBg = "bg-green-900/90 hover:bg-green-900/70 cursor-pointer"; textColor = "text-green-400"; }
-              else if (logStatus === 'leave') { cellBg = "bg-purple-900/40 hover:bg-purple-900/60 cursor-pointer"; textColor = "text-purple-400"; }
-              else if (logStatus === 'annual_leave') { cellBg = "bg-purple-900/60 hover:bg-purple-900/80 cursor-pointer"; textColor = "text-purple-300"; }
-              else if (logStatus === 'late') { cellBg = "bg-amber-900/40 hover:bg-amber-900/60 cursor-pointer"; textColor = "text-amber-400"; }
-              else if (logStatus === 'absent') { cellBg = "bg-red-900/40 hover:bg-red-900/60 cursor-pointer"; textColor = "text-red-400"; }
-              else if (logStatus === 'partial_leave') { cellBg = "bg-sky-900/40 hover:bg-sky-900/60 cursor-pointer"; textColor = "text-sky-400"; }
-              else if (logStatus === 'holiday_work') { cellBg = "bg-amber-600/40 hover:bg-amber-600/60 cursor-pointer"; textColor = "text-amber-200"; }
+              if (logStatus === 'overtime') { cellBg = "bg-green-900/90 cursor-pointer hover:bg-green-900/70"; textColor = "text-green-400"; }
+              else if (logStatus === 'leave') { cellBg = "bg-purple-900/40 cursor-pointer hover:bg-purple-900/60"; textColor = "text-purple-400"; }
+              else if (logStatus === 'annual_leave') { cellBg = "bg-pink-900/30 cursor-pointer hover:bg-pink-900/50"; textColor = "text-pink-400"; }
+              else if (logStatus === 'late') { cellBg = "bg-orange-900/40 cursor-pointer hover:bg-orange-900/60"; textColor = "text-orange-400"; }
+              else if (logStatus === 'absent') { cellBg = "bg-red-900/40 cursor-pointer hover:bg-red-900/60"; textColor = "text-red-400"; }
+              else if (logStatus === 'partial_leave') { cellBg = "bg-sky-900/40 cursor-pointer hover:bg-sky-900/60"; textColor = "text-sky-400"; }
+              else if (logStatus === 'holiday_work') { cellBg = "bg-yellow-900/40 cursor-pointer hover:bg-yellow-900/60"; textColor = "text-yellow-300"; }
               else if (logStatus === 'normal') {
-                if (shift.isOffDay) { cellBg = "bg-[#331c17] hover:bg-[#43251e] cursor-pointer"; textColor = "text-[#d97757]"; } 
-                else if (shift.isNight) { cellBg = "bg-[#163333] hover:bg-[#1f4a4a] cursor-pointer"; textColor = "text-[#5eead4]"; } 
+                if (shift.isOffDay) { cellBg = "bg-[#331c17] hover:bg-[#43251e] cursor-pointer"; textColor = "text-[#d97757]"; }
+                else if (shift.isNight) { cellBg = "bg-[#163333] hover:bg-[#1f4a4a] cursor-pointer"; textColor = "text-[#5eead4]"; }
                 else { cellBg = "bg-[#192a25] hover:bg-[#213831] cursor-pointer"; textColor = "text-[#4ade80]"; }
               }
             } else if (isPast || isToday) {
-              if (shift.isOffDay) { cellBg = "bg-[#331c17] hover:bg-[#43251e] cursor-pointer"; textColor = "text-[#d97757]"; } 
-              else if (shift.isNight) { cellBg = "bg-[#163333] hover:bg-[#1f4a4a] cursor-pointer"; textColor = "text-[#5eead4]"; } 
+              if (shift.isOffDay) { cellBg = "bg-[#331c17] hover:bg-[#43251e] cursor-pointer"; textColor = "text-[#d97757]"; }
+              else if (shift.isNight) { cellBg = "bg-[#163333] hover:bg-[#1f4a4a] cursor-pointer"; textColor = "text-[#5eead4]"; }
               else { cellBg = "bg-[#192a25] hover:bg-[#213831] cursor-pointer"; textColor = "text-[#4ade80]"; }
             } else {
               if (shift.isOffDay) textColor = "text-[#d97757]";
             }
 
             return (
-              <div 
+              <div
                 key={index}
                 onClick={() => handleDayClick({
                   date: item.date, shiftName: shift.name, isNightShift: shift.isNight,
                   isOffDay: shift.isOffDay, isPast, isCurrentMonth: item.isCurrentMonth, shiftId: shift.id
                 }, isBeforeEmployment)}
-                className={`min-h-[5rem] sm:min-h-[7rem] p-2 border-r border-b border-base-300 transition-colors duration-200 flex flex-col justify-start ${cellBg} ${index % 7 === 6 ? 'border-r-0' : ''}`}
+                className={`relative min-h-[5rem] sm:min-h-[7rem] p-2 border-r border-b border-base-300 transition-colors duration-200 flex flex-col justify-start ${cellBg} ${index % 7 === 6 ? 'border-r-0' : ''}`}
               >
+
+                {/* YENİ SARI VE ÜZERİNE GELİNCE AÇILAN TATİL ROZETİ */}
+                {holidayName && (
+                  <div className="absolute top-1 right-1 z-20 group">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-yellow-300 bg-yellow-900/60 px-1.5 py-0.5 rounded shadow-lg border border-yellow-500/40 cursor-help flex items-center justify-center">
+                      🇹🇷 Tatil
+                    </span>
+
+                    {/* Hoverlayınca hemen üstünde beliren özel Tooltip */}
+                    <div className="absolute bottom-full right-0 mb-1.5 w-48 p-2 bg-yellow-900/95 border border-yellow-500/50 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50">
+                      <p className="text-xs font-bold text-yellow-400">{holidayName}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-start">
                   <span className={`text-sm sm:text-lg font-bold ${textColor} ${isToday ? 'border-b-2 border-primary' : ''}`}>
                     {item.date.getDate()}
                   </span>
-                  {workLogs[dateKey]?.note && !isBeforeEmployment && (
+                  {workLogs[dateKeyStr]?.note && !isBeforeEmployment && (
                     <span className="text-white/50">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -326,11 +378,12 @@ export default function WorktimeCalendar() {
           </svg>
           {new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(baseDate)} Ayı Özet Raporu
         </h3>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+
+        {/* 8 Kutucuk: 2 Satır, 4 Sütun Düzeni */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {(() => {
-            let normal = 0, overtimeHours = 0, lateHours = 0, absent = 0, leave = 0, weekendPaid = 0;
-            
+            let normal = 0, overtimeHours = 0, lateHours = 0, absent = 0, leave = 0, annualLeave = 0, holidayWork = 0, weekendPaid = 0;
+
             calendarDays.forEach(item => {
               if (!item.isCurrentMonth || item.date < employmentStartDate) return;
               const isPast = item.date < actualToday;
@@ -340,43 +393,53 @@ export default function WorktimeCalendar() {
               const shift = getShiftForDate(item.date);
 
               if (log) {
-                if (log.status === 'normal' || log.status === 'holiday_work') normal++;
+                if (log.status === 'normal') normal++;
                 if (log.status === 'overtime') { normal++; overtimeHours += (Number(log.hours) || 0); }
                 if (log.status === 'late' || log.status === 'partial_leave') { normal++; lateHours += (Number(log.hours) || 0); }
                 if (log.status === 'absent') absent++;
-                if (log.status === 'leave' || log.status === 'annual_leave') leave++;
-              } 
+                if (log.status === 'leave') leave++;
+                if (log.status === 'annual_leave') annualLeave++;
+                if (log.status === 'holiday_work') holidayWork++;
+              }
               else if (isPast || isToday) {
-                if (!shift.isOffDay) normal++; 
-                else weekendPaid++; 
+                if (!shift.isOffDay) normal++;
+                else weekendPaid++;
               }
             });
 
             return (
               <>
-                <div className="bg-[#1e2329] p-3 rounded-lg border border-base-300 text-center">
-                  <p className="text-xs text-base-content/60 font-medium mb-1">Normal Mesai</p>
+                <div className="bg-[#1e2329] p-4 rounded-lg border border-base-300 text-center">
+                  <p className="text-xs text-base-content/60 font-bold mb-1">Normal Mesai</p>
                   <p className="text-xl font-bold text-emerald-400">{normal} Gün</p>
                 </div>
-                <div className="bg-[#1e2329] p-3 rounded-lg border border-base-300 text-center">
-                  <p className="text-xs text-base-content/60 font-medium mb-1">Hafta Tatili</p>
+                <div className="bg-[#1e2329] p-4 rounded-lg border border-base-300 text-center">
+                  <p className="text-xs text-base-content/60 font-bold mb-1">Hafta Tatili</p>
                   <p className="text-xl font-bold text-base-content">{weekendPaid} Gün</p>
                 </div>
-                <div className="bg-[#1e2329] p-3 rounded-lg border border-base-300 text-center">
-                  <p className="text-xs text-base-content/60 font-medium mb-1">Fazla Mesai</p>
-                  <p className="text-xl font-bold text-indigo-400">{overtimeHours} Saat</p>
+                <div className="bg-[#1e2329] p-4 rounded-lg border border-base-300 text-center">
+                  <p className="text-xs text-base-content/60 font-bold mb-1">Fazla Mesai</p>
+                  <p className="text-xl font-bold text-green-400">{overtimeHours} Saat</p>
                 </div>
-                <div className="bg-[#1e2329] p-3 rounded-lg border border-base-300 text-center">
-                  <p className="text-xs text-base-content/60 font-medium mb-1">Ücretli İzin</p>
+                <div className="bg-[#1e2329] p-4 rounded-lg border border-base-300 text-center">
+                  <p className="text-xs text-base-content/60 font-bold mb-1">Resmi Tatil</p>
+                  <p className="text-xl font-bold text-yellow-300">{holidayWork} Gün</p>
+                </div>
+                <div className="bg-[#1e2329] p-4 rounded-lg border border-base-300 text-center">
+                  <p className="text-xs text-base-content/60 font-bold mb-1">Yıllık İzin</p>
+                  <p className="text-xl font-bold text-pink-400">{annualLeave} Gün</p>
+                </div>
+                <div className="bg-[#1e2329] p-4 rounded-lg border border-base-300 text-center">
+                  <p className="text-xs text-base-content/60 font-bold mb-1">Ücretli/Rapor</p>
                   <p className="text-xl font-bold text-purple-400">{leave} Gün</p>
                 </div>
-                <div className="bg-[#1e2329] p-3 rounded-lg border border-base-300 text-center">
-                  <p className="text-xs text-base-content/60 font-medium mb-1">Devamsızlık</p>
-                  <p className="text-xl font-bold text-red-400">{absent} Gün</p>
+                <div className="bg-[#1e2329] p-4 rounded-lg border border-base-300 text-center">
+                  <p className="text-xs text-base-content/60 font-bold mb-1">Geç/Eksik</p>
+                  <p className="text-xl font-bold text-orange-400">{lateHours} Saat</p>
                 </div>
-                <div className="bg-[#1e2329] p-3 rounded-lg border border-base-300 text-center">
-                  <p className="text-xs text-base-content/60 font-medium mb-1">Eksik/Geç Saat</p>
-                  <p className="text-xl font-bold text-warning">{lateHours} Saat</p>
+                <div className="bg-[#1e2329] p-4 rounded-lg border border-base-300 text-center">
+                  <p className="text-xs text-base-content/60 font-bold mb-1">Devamsızlık</p>
+                  <p className="text-xl font-bold text-red-400">{absent} Gün</p>
                 </div>
               </>
             );
@@ -386,9 +449,11 @@ export default function WorktimeCalendar() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" onClick={() => setIsModalOpen(false)}></div>
-          
+
           <div className="bg-base-200 border border-base-300 rounded-2xl p-6 sm:p-8 relative z-10 shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col animate-fade-in">
+
             <button onClick={() => setIsModalOpen(false)} className="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">✕</button>
 
             <h3 className="font-bold text-2xl sm:text-3xl text-primary mb-2 pr-8">
@@ -397,9 +462,9 @@ export default function WorktimeCalendar() {
             <p className="py-1 text-md sm:text-lg font-medium text-base-content/80">
               Vardiya: <span className="text-base-content">{selectedDay?.shiftName}</span>
             </p>
-            
+
             <div className="divider my-2 opacity-50"></div>
-            
+
             {isFutureDay && (
               <div className="bg-blue-900/30 border border-blue-500/30 text-blue-300 text-sm p-3 rounded-xl flex items-center gap-3 mb-4 shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -408,46 +473,71 @@ export default function WorktimeCalendar() {
                 <span>Bu gün henüz yaşanmadı. Sadece geleceğe yönelik planlı izin veya tatil mesaisi girebilirsiniz.</span>
               </div>
             )}
+            {/* RESMİ TATİL UYARISI (Modal İçi) */}
+            {(() => {
+              if (!selectedDay) return null;
+              const my = selectedDay.date.getFullYear();
+              const mm = String(selectedDay.date.getMonth() + 1).padStart(2, '0');
+              const md = String(selectedDay.date.getDate()).padStart(2, '0');
+              const modalHolidayName = TURKISH_HOLIDAYS_2026[`${my}-${mm}-${md}`];
 
+              if (modalHolidayName) {
+                return (
+                  <div className="mt-4 bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl flex gap-3 items-start shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-bold text-yellow-400">{modalHolidayName}</p>
+                      <p className="text-xs text-yellow-100/70 mt-1">
+                        Bu gün resmi tatildir. İşletme kurallarına göre bugün yapılan çalışmalar <strong>2 katı yevmiye</strong> ile ücretlendirilir.
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            <br></br>
             <div className="form-control w-full mb-6">
               <label className="label pb-2"><span className="label-text font-bold text-base-content/80">Günlük Durum</span></label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-base-100 p-4 rounded-xl border border-base-300 w-full">
-                
+
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
                   <input type="radio" name="status" className="radio radio-sm" disabled={isFutureDay ?? false} checked={dayStatus === 'normal'} onChange={() => handleStatusChange('normal')} />
                   <span className="label-text font-medium text-base-content/90">Normal Mesai</span>
                 </label>
-                
+
                 <label className="label cursor-pointer justify-start gap-3 p-1 hover:bg-base-200 rounded-lg transition-colors">
                   <input type="radio" name="status" className="radio radio-sm" checked={dayStatus === 'leave'} onChange={() => handleStatusChange('leave')} />
                   <span className="label-text text-purple-400 font-bold">Ücretli İzinli/Raporlu</span>
                 </label>
-                
+
                 <label className="label cursor-pointer justify-start gap-3 p-1 hover:bg-base-200 rounded-lg transition-colors">
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#c084fc'}} checked={dayStatus === 'annual_leave'} onChange={() => handleStatusChange('annual_leave')} />
-                  <span className="label-text text-purple-400 font-bold">Yıllık İzin</span>
+                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#ec4899'}} checked={dayStatus === 'annual_leave'} onChange={() => handleStatusChange('annual_leave')} />
+                  <span className="label-text text-pink-400 font-bold">Yıllık İzin</span>
                 </label>
-                
+
                 <label className="label cursor-pointer justify-start gap-3 p-1 hover:bg-base-200 rounded-lg transition-colors">
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#fbbf24'}} checked={dayStatus === 'holiday_work'} onChange={() => handleStatusChange('holiday_work')} />
-                  <span className="label-text text-amber-400 font-bold">Resmi Tatil Mesaisi</span>
+                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#fde047'}} checked={dayStatus === 'holiday_work'} onChange={() => handleStatusChange('holiday_work')} />
+                  <span className="label-text text-yellow-300 font-bold">Resmi Tatil Mesaisi</span>
                 </label>
 
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
                   <input type="radio" name="status" className="radio radio-sm" disabled={isFutureDay ?? false} checked={dayStatus === 'absent'} onChange={() => handleStatusChange('absent')} />
                   <span className="label-text text-error font-bold">Devamsız / Ücretsiz</span>
                 </label>
-                
+
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#10b981'}} disabled={isFutureDay ?? false} checked={dayStatus === 'overtime'} onChange={() => handleStatusChange('overtime')} />
+                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#10b981' }} disabled={isFutureDay ?? false} checked={dayStatus === 'overtime'} onChange={() => handleStatusChange('overtime')} />
                   <span className="label-text text-emerald-500 font-bold">Fazla Mesai (+Ekstra)</span>
                 </label>
-                
+
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" disabled={isFutureDay ?? false} checked={dayStatus === 'late'} onChange={() => handleStatusChange('late')} />
-                  <span className="label-text text-warning font-bold">Geç Kaldım (Kesinti)</span>
+                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#f97316'}} disabled={isFutureDay ?? false} checked={dayStatus === 'late'} onChange={() => handleStatusChange('late')} />
+                  <span className="label-text text-orange-500 font-bold">Geç Kaldım (Kesinti)</span>
                 </label>
-                
+
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
                   <input type="radio" name="status" className="radio radio-sm" disabled={isFutureDay ?? false} checked={dayStatus === 'partial_leave'} onChange={() => handleStatusChange('partial_leave')} />
                   <span className="label-text text-sky-400 font-bold">Saatlik İzin / Erken Çıkma</span>
@@ -459,9 +549,9 @@ export default function WorktimeCalendar() {
               <div className="form-control w-full mb-4 animate-fade-in bg-base-100 p-3 rounded-lg border border-base-300">
                 <label className="label pb-1">
                   <span className="label-text font-bold text-base-content/90">
-                    {dayStatus === 'overtime' ? 'Kaç Saat Fazla Mesai Yaptınız?' : 
-                     dayStatus === 'late' ? 'Kaç Saat Geç Kaldınız? (Örn: 1.5)' : 
-                     'Kaç Saat Erken Çıktınız / İzin Aldınız?'}
+                    {dayStatus === 'overtime' ? 'Kaç Saat Fazla Mesai Yaptınız?' :
+                      dayStatus === 'late' ? 'Kaç Saat Geç Kaldınız? (Örn: 1.5)' :
+                        'Kaç Saat Erken Çıktınız / İzin Aldınız?'}
                   </span>
                 </label>
                 <label className="input input-bordered flex items-center gap-2 bg-base-200 focus-within:ring-2 focus-within:ring-primary">
@@ -492,7 +582,7 @@ export default function WorktimeCalendar() {
                 </button>
               </div>
             </div>
-            
+
           </div>
         </div>
       )}
@@ -510,6 +600,8 @@ export default function WorktimeCalendar() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }

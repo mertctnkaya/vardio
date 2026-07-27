@@ -48,7 +48,6 @@ export default function Settings() {
         if (data.saturday_multiplier) setSaturdayMultiplier(data.saturday_multiplier.toString());
         if (data.weekend_multiplier) setWeekendMultiplier(data.weekend_multiplier.toString());
         
-        // Veritabanındaki daily_wage'i 30 ile çarpıp kullanıcıya "Aylık Brüt" olarak gösteriyoruz
         if (data.daily_wage) setMonthlyGross((data.daily_wage * 30).toFixed(2).replace(/\.00$/, ''));
       }
       setIsLoading(false);
@@ -92,7 +91,6 @@ export default function Settings() {
       shift_end_time: finalEndTime, 
       shift_duration: workType === '2-shift' ? Number(shiftDuration) : (workType === '3-shift' ? 8 : 0),
       daily_wage: Number(monthlyGross) / 30, 
-      hourly_overtime: Number(hourlyOvertime),
       base_work_hours: Number(baseWorkHours),
       night_bonus_percent: Number(nightBonus) || 0,
       saturday_multiplier: Number(saturdayMultiplier) || 1.5,
@@ -198,7 +196,6 @@ export default function Settings() {
                 <input type="date" className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500" value={employmentStartDate} onChange={(e) => setEmploymentStartDate(e.target.value)} />
               </div>
               
-              {/* Sabit Vardiya Seçildiğinde Döngü Başlangıcı Gizlenir */}
               {workType !== 'fixed' && (
                 <div className="form-control w-full animate-fade-in">
                   <label className="label"><span className="label-text font-bold text-base-content/80">Döngü Başlangıcı (Gündüz)</span></label>
@@ -220,14 +217,16 @@ export default function Settings() {
                 </label>
               </div>
 
+              {/* DÜZELTME: Saatlik Mesai artık readOnly ve disabled görünümünde */}
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text font-bold text-base-content/80">Saatlik Mesai (Brüt)</span>
                 </label>
-                <label className="input input-bordered flex items-center gap-2 bg-base-200">
+                <label className="input input-bordered flex items-center gap-2 bg-base-300/50 border-base-300 opacity-70 cursor-not-allowed">
                   <span className="text-base-content/50">₺</span>
-                  <input type="number" className="grow" placeholder="Oto hesaplanır" value={hourlyOvertime} onChange={(e) => setHourlyOvertime(e.target.value)} />
+                  <input type="number" className="grow cursor-not-allowed pointer-events-none text-base-content/70" placeholder="Oto hesaplanır" value={hourlyOvertime} readOnly />
                 </label>
+                <label className="label p-1"><span className="label-text-alt text-base-content/40">Maaş yazıldıktan sonra otomatik hesaplanır.</span></label>
               </div>
 
               <div className="form-control w-full">
