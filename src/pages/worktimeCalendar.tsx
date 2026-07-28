@@ -13,8 +13,8 @@ interface DayDetail {
   shiftId: number;
 }
 
-export const TURKISH_HOLIDAYS_2026: Record<string, string> = {
-  "2026-01-01": "Yılbaşı",
+const TURKISH_HOLIDAYS_2026: Record<string, string> = {
+  "2026-01-01": "Yılbaşı", 
   "2026-03-19": "Ramazan Bayramı Arifesi",
   "2026-03-20": "Ramazan Bayramı 1. Gün",
   "2026-03-21": "Ramazan Bayramı 2. Gün",
@@ -32,6 +32,14 @@ export const TURKISH_HOLIDAYS_2026: Record<string, string> = {
   "2026-10-29": "29 Ekim Cumhuriyet Bayramı"
 };
 
+// DÜZELTME: Tüm timezone (saat dilimi) kaymalarını engelleyen yardımcı fonksiyon
+const getLocalDateString = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function WorktimeCalendar() {
   const { settings, user } = useAppStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -40,23 +48,13 @@ export default function WorktimeCalendar() {
   const [selectedDay, setSelectedDay] = useState<DayDetail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [dayStatus, setDayStatus] = useState(''); // DÜZELTME: Artık varsayılan olarak BOMBOŞ geliyor
+  const [dayStatus, setDayStatus] = useState('');
   const [noteText, setNoteText] = useState('');
 
   const [baseDate, setBaseDate] = useState(new Date());
 
   const [workLogs, setWorkLogs] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
-
-  // Resmi tatil popup'ı için state
-  // const [activeHolidayPopup, setActiveHolidayPopup] = useState<string | null>(null);
-
-  //  Tatil rozetine tıklandığında çalışacak fonksiyon
-  // const handleHolidayClick = (e: React.MouseEvent, holidayName: string) => {
-  //   e.stopPropagation(); // Tıklamanın alt katmandaki günü (modalı) açmasını engeller
-  //   setActiveHolidayPopup(holidayName);
-  //   setTimeout(() => setActiveHolidayPopup(null), 5000); // 5 saniye sonra otomatik kapanır
-  // };
 
   const actualToday = new Date();
   actualToday.setHours(0, 0, 0, 0);
@@ -82,8 +80,9 @@ export default function WorktimeCalendar() {
   useEffect(() => {
     async function fetchLogs() {
       if (!user) return;
-      const firstDay = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
-      const lastDay = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0];
+      // DÜZELTME: Ay başı ve sonunu çekerken timezone hatası önlendi
+      const firstDay = getLocalDateString(new Date(currentYear, currentMonth, 1));
+      const lastDay = getLocalDateString(new Date(currentYear, currentMonth + 1, 0));
 
       const { data, error } = await supabase
         .from('work_logs')
@@ -169,12 +168,12 @@ export default function WorktimeCalendar() {
       return;
     }
 
-    const dateKey = dayData.date.toISOString().split('T')[0];
+    // DÜZELTME: toISOString yerine lokal saati kullandık
+    const dateKey = getLocalDateString(dayData.date);
     const existingLog = workLogs[dateKey];
 
     setSelectedDay(dayData);
 
-    // DÜZELTME: Veritabanında kayıt yoksa bomboş ('') bırak. Kullanıcı kendi seçecek.
     setDayStatus(existingLog?.status || '');
     setNoteText(existingLog?.note || '');
     setLogHours(existingLog?.hours ? existingLog.hours.toString() : '');
@@ -189,11 +188,12 @@ export default function WorktimeCalendar() {
     else setLogHours('');
   };
 
-  // YENİ: Yanlış kaydedilmiş günü veritabanından tamamen silme fonksiyonu
   const handleDeleteLog = async () => {
     if (!user || !selectedDay) return;
     setIsSaving(true);
-    const dateKey = selectedDay.date.toISOString().split('T')[0];
+
+    // DÜZELTME: toISOString silindi
+    const dateKey = getLocalDateString(selectedDay.date);
 
     const { error } = await supabase
       .from('work_logs')
@@ -203,7 +203,7 @@ export default function WorktimeCalendar() {
 
     if (!error) {
       const newLogs = { ...workLogs };
-      delete newLogs[dateKey]; // State'ten de siliyoruz
+      delete newLogs[dateKey];
       setWorkLogs(newLogs);
       setIsModalOpen(false);
     } else {
@@ -215,14 +215,16 @@ export default function WorktimeCalendar() {
   const handleSaveLog = async () => {
     if (!user || !selectedDay) return;
 
-    // DÜZELTME: Boş kaydetmeye çalışırsa engelle
     if (!dayStatus) {
       alert("Lütfen kaydetmeden önce bir 'Günlük Durum' seçin.");
       return;
     }
 
     setIsSaving(true);
-    const dateKey = selectedDay.date.toISOString().split('T')[0];
+
+    // DÜZELTME: toISOString silindi
+    const dateKey = getLocalDateString(selectedDay.date);
+
     const payload = {
       user_id: user.id,
       log_date: dateKey,
@@ -246,12 +248,94 @@ export default function WorktimeCalendar() {
     setIsSaving(false);
   };
 
+  // --- DIŞA AKTARMA (EXPORT) MOTORLARI ---
+  const exportToCSV = () => {
+    // Veritabanındaki İngilizce durumları Türkçeye çeviren sözlük
+    const statusMap: Record<string, string> = {
+      'normal': 'Normal Mesai',
+      'overtime': 'Fazla Mesai',
+      'leave': 'Ücretli İzin/Rapor',
+      'annual_leave': 'Yıllık İzin',
+      'holiday_work': 'Resmi Tatil Mesaisi',
+      'absent': 'Devamsızlık',
+      'late': 'Geç Kalma',
+      'partial_leave': 'Saatlik İzin'
+    };
+
+    // NOT sütunu gizlilik gereği tamamen kaldırıldı
+    let csvContent = "\uFEFFTarih,Vardiya,Durum,Saat (Ek/Eksik)\n";
+    
+    calendarDays.forEach(item => {
+      if (!item.isCurrentMonth || item.date < employmentStartDate) return;
+      
+      const dateStr = getLocalDateString(item.date);
+      const log = workLogs[dateStr];
+      const shift = getShiftForDate(item.date);
+      
+      let statusStr = shift.isOffDay ? 'Hafta Tatili' : 'Normal Mesai';
+      if (log && log.status) {
+        statusStr = statusMap[log.status] || log.status;
+      }
+      
+      const hours = log?.hours ? log.hours : '';
+      csvContent += `${dateStr},${shift.name},${statusStr},${hours}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    
+    // Özel Dosya İsimlendirme Motoru
+    const monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(baseDate);
+    const userName = user?.user_metadata?.name ? user.user_metadata.name.replace(/\s+/g, '_') : 'Rapor';
+    link.setAttribute("download", `Vardiyake_${monthName}_${userName}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToJSON = () => {
+    const currentMonthLogs: Record<string, any> = {};
+    calendarDays.forEach(item => {
+      if (!item.isCurrentMonth || item.date < employmentStartDate) return;
+      const dateStr = getLocalDateString(item.date);
+      if (workLogs[dateStr]) currentMonthLogs[dateStr] = workLogs[dateStr];
+    });
+
+    const blob = new Blob([JSON.stringify(currentMonthLogs, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    
+    // Özel Dosya İsimlendirme Motoru
+    const monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(baseDate);
+    const userName = user?.user_metadata?.name ? user.user_metadata.name.replace(/\s+/g, '_') : 'Yedek';
+    link.setAttribute("download", `Vardiyake_${monthName}_${userName}.json`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const printToPDF = () => {
+    // Tarayıcı PDF adını <title> etiketinden alır. Geçici olarak değiştiriyoruz.
+    const monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(baseDate);
+    const userName = user?.user_metadata?.name ? user.user_metadata.name.replace(/\s+/g, '_') : 'Rapor';
+    
+    const originalTitle = document.title;
+    document.title = `Vardiyake_${monthName}_${userName}`;
+    window.print();
+    document.title = originalTitle; // İşlem bitince orjinal isme geri dön
+  };
+
   const isFutureDay = selectedDay && !selectedDay.isPast && selectedDay.date.toDateString() !== actualToday.toDateString();
-  const dateKeyForSelected = selectedDay?.date.toISOString().split('T')[0] || '';
+  const dateKeyForSelected = selectedDay ? getLocalDateString(selectedDay.date) : '';
   const existingLogForSelected = workLogs[dateKeyForSelected];
 
   return (
-    <div className="flex flex-col items-center animate-fade-in w-full pb-10">
+    <div className="flex flex-col items-center animate-fade-in w-full pb-10" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
 
       <div className="w-full max-w-4xl flex flex-col sm:flex-row justify-between items-center mb-6 px-2 gap-4">
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
@@ -283,13 +367,9 @@ export default function WorktimeCalendar() {
             const isToday = item.date.toDateString() === actualToday.toDateString();
             const isBeforeEmployment = item.date < employmentStartDate;
 
-            // DÜZELTME: Timezone hatasını engellemek için lokal tarihi alıyoruz
-            const y = item.date.getFullYear();
-            const m = String(item.date.getMonth() + 1).padStart(2, '0');
-            const d = String(item.date.getDate()).padStart(2, '0');
-            const dateKeyStr = `${y}-${m}-${d}`;
+            // DÜZELTME: Timezone hatasını engellemek için lokal tarihi yardımcı fonksiyonla alıyoruz
+            const dateKeyStr = getLocalDateString(item.date);
 
-            // Tatil objesinden bugünün adını çekiyoruz (Yoksa undefined döner)
             const holidayName = TURKISH_HOLIDAYS_2026[dateKeyStr];
             const logStatus = workLogs[dateKeyStr]?.status;
 
@@ -333,14 +413,12 @@ export default function WorktimeCalendar() {
                 className={`relative min-h-[5rem] sm:min-h-[7rem] p-2 border-r border-b border-base-300 transition-colors duration-200 flex flex-col justify-start ${cellBg} ${index % 7 === 6 ? 'border-r-0' : ''}`}
               >
 
-                {/* YENİ SARI VE ÜZERİNE GELİNCE AÇILAN TATİL ROZETİ */}
                 {holidayName && (
                   <div className="absolute top-1 right-1 z-20 group">
                     <span className="text-[10px] sm:text-[11px] font-bold text-yellow-300 bg-yellow-900/60 px-1.5 py-0.5 rounded shadow-lg border border-yellow-500/40 cursor-help flex items-center justify-center">
                       🇹🇷 Tatil
                     </span>
 
-                    {/* Hoverlayınca hemen üstünde beliren özel Tooltip */}
                     <div className="absolute bottom-full right-0 mb-1.5 w-48 p-2 bg-yellow-900/95 border border-yellow-500/50 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50">
                       <p className="text-xs font-bold text-yellow-400">{holidayName}</p>
                     </div>
@@ -368,9 +446,50 @@ export default function WorktimeCalendar() {
             );
           })}
         </div>
+        {/* YENİ: YASAL DEVAMSIZLIK UYARISI MOTORU */}
+      {(() => {
+        let absentCount = 0;
+        let maxConsecutiveAbsent = 0;
+        let currentConsecutive = 0;
+
+        calendarDays.forEach(item => {
+          if (!item.isCurrentMonth || item.date < employmentStartDate) return;
+          const dateKey = getLocalDateString(item.date);
+          const log = workLogs[dateKey];
+          const isOffDay = getShiftForDate(item.date).isOffDay;
+          
+          if (log && log.status === 'absent') {
+            absentCount++;
+            currentConsecutive++;
+            if (currentConsecutive > maxConsecutiveAbsent) maxConsecutiveAbsent = currentConsecutive;
+          } else if (!isOffDay) { 
+            // Tatil olmayan bir mesai gününe gelindiğinde ardışıklık sıfırlanır
+            currentConsecutive = 0;
+          }
+        });
+
+        // KANUN: Ardı ardına 2 gün VEYA toplamda 3 gün
+        const showDangerWarning = absentCount >= 3 || maxConsecutiveAbsent >= 2;
+
+        if (showDangerWarning) {
+          return (
+            <div className="w-full max-w-4xl mt-6 bg-red-900/10 border-l-4 border-red-500 rounded-r-xl p-5 shadow-sm animate-fade-in flex gap-4 items-start">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500 shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h4 className="font-bold text-red-500 text-lg">Yasal Uyarı: Devamsızlık Tehlike Sınırı!</h4>
+                <p className="text-sm text-base-content/80 mt-1">
+                  Bu ay içerisinde <strong>{maxConsecutiveAbsent >= 2 ? 'ardı ardına 2 gün' : 'toplam 3 gün'}</strong> devamsızlık yaptığınız tespit edildi. İş Kanunu Madde 25/II gereğince; mazeretsiz devamsızlıklar işverene <strong className="text-red-400">Tazminatsız Haklı Fesih (İşten Çıkarma)</strong> hakkı tanır. Lütfen durumunuzu yöneticinizle görüşün.
+                </p>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
       </div>
 
-      {/* AYLIK ÖZET RAPORU DİVİ */}
       <div className="w-full max-w-4xl mt-6 bg-[#16191d] rounded-xl border border-base-300 p-6 shadow-lg animate-fade-in">
         <h3 className="text-lg font-bold text-base-content mb-4 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
@@ -379,7 +498,6 @@ export default function WorktimeCalendar() {
           {new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(baseDate)} Ayı Özet Raporu
         </h3>
 
-        {/* 8 Kutucuk: 2 Satır, 4 Sütun Düzeni */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {(() => {
             let normal = 0, overtimeHours = 0, lateHours = 0, absent = 0, leave = 0, annualLeave = 0, holidayWork = 0, weekendPaid = 0;
@@ -388,7 +506,7 @@ export default function WorktimeCalendar() {
               if (!item.isCurrentMonth || item.date < employmentStartDate) return;
               const isPast = item.date < actualToday;
               const isToday = item.date.toDateString() === actualToday.toDateString();
-              const dateKey = item.date.toISOString().split('T')[0];
+              const dateKey = getLocalDateString(item.date); // DÜZELTME
               const log = workLogs[dateKey];
               const shift = getShiftForDate(item.date);
 
@@ -447,6 +565,29 @@ export default function WorktimeCalendar() {
         </div>
       </div>
 
+      {/* DIŞA AKTARMA (EXPORT) BÖLÜMÜ */}
+      <div className="w-full max-w-4xl mt-4 bg-[#1e2329] rounded-xl border border-base-300 p-6 shadow-lg animate-fade-in print:hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div>
+            <h4 className="font-bold text-base-content text-lg">Raporu Dışa Aktar</h4>
+            <p className="text-sm text-base-content/60 mt-1">Bu ayki çalışma dökümünüzü cihazınıza indirin veya yazdırın.</p>
+          </div>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <button onClick={exportToCSV} className="btn btn-sm sm:btn-md p-3 bg-green-900/30 text-green-400 hover:bg-green-600 hover:text-white border-green-500/30 flex-1 sm:flex-none">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              Excel (CSV)
+            </button>
+            <button onClick={printToPDF} className="btn btn-sm sm:btn-md p-3 bg-red-900/30 text-red-400 hover:bg-red-600 hover:text-white border-red-500/30 flex-1 sm:flex-none">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+              Yazdır / PDF
+            </button>
+            <button onClick={exportToJSON} className="btn btn-sm sm:btn-md p-3 btn-ghost bg-gray-700 border-base-300 text-base-content/60 hover:bg-base-200 flex-1 sm:flex-none" title="Ham Veri Yedeği">
+              JSON
+            </button>
+          </div>
+        </div>
+      </div>
+
       {isModalOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
 
@@ -473,13 +614,11 @@ export default function WorktimeCalendar() {
                 <span>Bu gün henüz yaşanmadı. Sadece geleceğe yönelik planlı izin veya tatil mesaisi girebilirsiniz.</span>
               </div>
             )}
-            {/* RESMİ TATİL UYARISI (Modal İçi) */}
+
             {(() => {
               if (!selectedDay) return null;
-              const my = selectedDay.date.getFullYear();
-              const mm = String(selectedDay.date.getMonth() + 1).padStart(2, '0');
-              const md = String(selectedDay.date.getDate()).padStart(2, '0');
-              const modalHolidayName = TURKISH_HOLIDAYS_2026[`${my}-${mm}-${md}`];
+              // DÜZELTME: Modal içi tatil uyarısında da yerel saati kullandık
+              const modalHolidayName = TURKISH_HOLIDAYS_2026[getLocalDateString(selectedDay.date)];
 
               if (modalHolidayName) {
                 return (
@@ -514,12 +653,12 @@ export default function WorktimeCalendar() {
                 </label>
 
                 <label className="label cursor-pointer justify-start gap-3 p-1 hover:bg-base-200 rounded-lg transition-colors">
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#ec4899'}} checked={dayStatus === 'annual_leave'} onChange={() => handleStatusChange('annual_leave')} />
+                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#ec4899' }} checked={dayStatus === 'annual_leave'} onChange={() => handleStatusChange('annual_leave')} />
                   <span className="label-text text-pink-400 font-bold">Yıllık İzin</span>
                 </label>
 
                 <label className="label cursor-pointer justify-start gap-3 p-1 hover:bg-base-200 rounded-lg transition-colors">
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#fde047'}} checked={dayStatus === 'holiday_work'} onChange={() => handleStatusChange('holiday_work')} />
+                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#fde047' }} checked={dayStatus === 'holiday_work'} onChange={() => handleStatusChange('holiday_work')} />
                   <span className="label-text text-yellow-300 font-bold">Resmi Tatil Mesaisi</span>
                 </label>
 
@@ -534,7 +673,7 @@ export default function WorktimeCalendar() {
                 </label>
 
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#f97316'}} disabled={isFutureDay ?? false} checked={dayStatus === 'late'} onChange={() => handleStatusChange('late')} />
+                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#f97316' }} disabled={isFutureDay ?? false} checked={dayStatus === 'late'} onChange={() => handleStatusChange('late')} />
                   <span className="label-text text-orange-500 font-bold">Geç Kaldım (Kesinti)</span>
                 </label>
 
@@ -566,7 +705,6 @@ export default function WorktimeCalendar() {
               <textarea className="textarea textarea-bordered w-full min-h-[120px] bg-base-100 text-sm focus:ring-2 focus:ring-primary p-4 leading-relaxed resize-y" placeholder="Bu güne dair notlar..." value={noteText} onChange={(e) => setNoteText(e.target.value)}></textarea>
             </div>
 
-            {/* DÜZELTME: KAYDI SİL BUTONU EKLENDİ VE HİZALANDI */}
             <div className="modal-action mt-6 flex justify-between items-center w-full">
               <div>
                 {existingLogForSelected && (
@@ -600,7 +738,6 @@ export default function WorktimeCalendar() {
           </div>
         </div>
       )}
-
 
     </div>
   );

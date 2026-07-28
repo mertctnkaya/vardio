@@ -17,14 +17,35 @@ export default function CurrentShift() {
   const [isSavingReminder, setIsSavingReminder] = useState(false);
 
   const formattedDateValue = targetDate.toISOString().split("T")[0];
-  const [reminderDate, setReminderDate] = useState(formattedDateValue);
+  
+  const [reminderStartDate, setReminderStartDate] = useState(formattedDateValue);
+  const [reminderEndDate, setReminderEndDate] = useState('');
+  const [reminderTimeRange, setReminderTimeRange] = useState('');
+
+  // YENİ: Bilgilendirme kutucuğu state'i (Diğer state'lerin altına koyabilirsin)
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    // Sayfa açıldığında daha önce kapatılmış mı diye kontrol et
+    const isHidden = localStorage.getItem('hideWelcomeInfo');
+    if (isHidden !== 'true') {
+      setShowWelcome(true);
+    }
+  }, []);
+
+  const handleCloseWelcome = () => {
+    localStorage.setItem('hideWelcomeInfo', 'true');
+    setShowWelcome(false);
+  };
 
   const fetchReminders = async () => {
     if (!user) return;
     const { data } = await supabase.from('reminders')
       .select('*')
       .eq('user_id', user.id)
+      .order('is_completed', { ascending: true })
       .order('date', { ascending: true });
+      
     if (data) setReminders(data);
   }
 
@@ -35,7 +56,7 @@ export default function CurrentShift() {
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.value) {
       setTargetDate(new Date(e.target.value));
-      setReminderDate(e.target.value);
+      setReminderStartDate(e.target.value);
     }
   };
 
@@ -43,7 +64,7 @@ export default function CurrentShift() {
     const newDate = new Date(targetDate);
     newDate.setDate(newDate.getDate() + days);
     setTargetDate(newDate);
-    setReminderDate(newDate.toISOString().split("T")[0]);
+    setReminderStartDate(newDate.toISOString().split("T")[0]);
   };
 
   const calculateEndTime = (startTime: string, hoursToAdd: number) => {
@@ -85,13 +106,17 @@ export default function CurrentShift() {
     
     const { error } = await supabase.from('reminders').insert({
       user_id: user.id,
-      date: reminderDate,
+      date: reminderStartDate,
+      end_date: reminderEndDate || null,
+      time_range: reminderTimeRange || null,
       content: reminderText,
       is_completed: false
     });
 
     if (!error) {
       setReminderText('');
+      setReminderEndDate('');
+      setReminderTimeRange('');
       setShowReminderModal(false);
       fetchReminders();
     }
@@ -106,6 +131,30 @@ export default function CurrentShift() {
   const deleteReminder = async (id: number) => {
     await supabase.from('reminders').delete().eq('id', id);
     fetchReminders();
+  };
+
+  const getStatusBadge = (rem: any) => {
+    if (rem.is_completed) return null;
+
+    const targetDate = new Date(rem.end_date || rem.date);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const diffMs = targetDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return <span className="bg-red-900/40 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">Süresi Geçti</span>;
+    } else if (diffDays >= 0 && diffDays <= 2) {
+      return <span className="bg-orange-900/40 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">Yaklaşıyor</span>;
+    }
+    return null;
+  };
+
+  const formatDateLabel = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
   };
 
   return (
@@ -176,10 +225,35 @@ export default function CurrentShift() {
         </div>
       </div>
 
+      {/* BİLGİLENDİRME KUTUSU (Çarpı butonlu ve LocalStorage destekli) */}
+      {showWelcome && (
+        <div className="md:col-span-2 mt-4 bg-indigo-900/10 border border-indigo-500/20 rounded-xl p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-4 animate-fade-in relative">
+          
+          <button 
+            onClick={handleCloseWelcome} 
+            className="absolute top-2 right-2 btn btn-xs btn-circle btn-ghost text-base-content/50 hover:text-base-content"
+            title="Bir daha gösterme"
+          >✕</button>
+
+          <div className="text-4xl bg-indigo-900/30 p-2 rounded-full hidden sm:block">👋</div>
+          <div className="flex-1 pr-6">
+            <h4 className="font-bold text-indigo-400 text-lg flex items-center gap-2">
+              <span className="sm:hidden">👋</span> Hoş Geldiniz! Sisteme Yabancı Mısınız?
+            </h4>
+            <p className="text-sm text-base-content/70 mt-1">
+              Vardiyake'nin nasıl çalıştığını, hesapların nasıl yapıldığını ve siteye nereden başlayacağınızı adım adım öğrenmek ister misiniz?
+            </p>
+          </div>
+          <Link to="/faq" className="btn btn-sm h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white border-none shrink-0 w-full sm:w-auto mt-2 sm:mt-0 shadow-lg shadow-indigo-900/40">
+            Kullanım Rehberi &rarr;
+          </Link>
+        </div>
+      )}
+
       {/* ========================================= */}
       {/* HATIRLATMALAR (REMINDERS) MODÜLÜ          */}
       {/* ========================================= */}
-      <div className="md:col-span-2 mt-2 bg-[#1e2329] rounded-xl border border-base-300 shadow-xl overflow-hidden animate-fade-in">
+      <div className="md:col-span-2 mt-4 bg-[#1e2329] rounded-xl border border-base-300 shadow-xl overflow-hidden animate-fade-in">
         <div className="bg-base-200 border-b border-base-300 p-4 flex justify-between items-center">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -196,7 +270,7 @@ export default function CurrentShift() {
           {reminders.length > 0 ? (
             <div className="space-y-3">
               {reminders.map((rem) => (
-                <div key={rem.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all ${rem.is_completed ? 'bg-base-300/50 border-base-300/50 opacity-60' : 'bg-base-100 border-base-300 shadow-sm'}`}>
+                <div key={rem.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all ${rem.is_completed ? 'bg-base-300/50 border-base-300/50 opacity-50' : 'bg-base-100 border-base-300 shadow-sm'}`}>
                   <div className="flex items-start gap-4 mb-3 sm:mb-0">
                     <input 
                       type="checkbox" 
@@ -205,8 +279,21 @@ export default function CurrentShift() {
                       onChange={() => toggleReminder(rem.id, rem.is_completed)}
                     />
                     <div>
-                      <p className={`font-medium ${rem.is_completed ? 'line-through text-base-content/50' : 'text-base-content'}`}>{rem.content}</p>
-                      <p className="text-xs text-indigo-400 mt-1">{new Date(rem.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <p className={`font-medium ${rem.is_completed ? 'line-through text-base-content/60' : 'text-base-content'}`}>{rem.content}</p>
+                        {getStatusBadge(rem)}
+                      </div>
+                      
+                      <div className="flex items-center gap-3 text-xs text-indigo-400 font-medium">
+                        <span className="flex items-center gap-1">
+                          📅 {rem.end_date ? `${formatDateLabel(rem.date)} - ${formatDateLabel(rem.end_date)}` : formatDateLabel(rem.date)}
+                        </span>
+                        {rem.time_range && (
+                          <span className="flex items-center gap-1 text-base-content/60">
+                            🕒 {rem.time_range}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <button onClick={() => deleteReminder(rem.id)} className="btn btn-sm btn-ghost text-red-400 hover:bg-red-900/20 w-full sm:w-auto">Sil</button>
@@ -227,35 +314,61 @@ export default function CurrentShift() {
 
       {/* HATIRLATMA EKLEME MODALI */}
       {showReminderModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex justify-center items-center p-4 animate-fade-in">
           <div className="bg-[#16191d] rounded-2xl w-full max-w-md shadow-2xl border border-base-300 overflow-hidden">
             <div className="bg-base-200 p-4 border-b border-base-300 flex justify-between items-center">
               <h3 className="font-bold text-lg text-indigo-400">Yeni Hatırlatma</h3>
               <button onClick={() => setShowReminderModal(false)} className="btn btn-sm btn-circle btn-ghost">✕</button>
             </div>
             <div className="p-6 space-y-4">
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="form-control w-full">
+                  <label className="label"><span className="label-text font-bold text-base-content/80">Başlangıç Tarihi</span></label>
+                  <input 
+                    type="date" 
+                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm" 
+                    value={reminderStartDate}
+                    onChange={(e) => setReminderStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="form-control w-full">
+                  <label className="label"><span className="label-text font-bold text-base-content/80">Bitiş (Opsiyonel)</span></label>
+                  <input 
+                    type="date" 
+                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm" 
+                    value={reminderEndDate}
+                    onChange={(e) => setReminderEndDate(e.target.value)}
+                    min={reminderStartDate}
+                  />
+                </div>
+              </div>
+
               <div className="form-control w-full">
-                <label className="label"><span className="label-text font-bold">Tarih</span></label>
+                <label className="label"><span className="label-text font-bold text-base-content/80">Saat Aralığı (Opsiyonel)</span></label>
                 <input 
-                  type="date" 
-                  className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500" 
-                  value={reminderDate}
-                  onChange={(e) => setReminderDate(e.target.value)}
+                  type="text" 
+                  className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 placeholder-base-content/30" 
+                  placeholder="Örn: 14:00 - 16:00"
+                  value={reminderTimeRange}
+                  onChange={(e) => setReminderTimeRange(e.target.value)}
                 />
               </div>
+
               <div className="form-control w-full">
-                <label className="label"><span className="label-text font-bold">Notunuz</span></label>
+                <label className="label"><span className="label-text font-bold text-base-content/80">Notunuz</span></label>
                 <textarea 
-                  className="textarea textarea-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 h-24 pt-3" 
+                  className="textarea textarea-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 h-24 pt-3 resize-none" 
                   placeholder="Mesai talebi, doktor randevusu vs..."
                   value={reminderText}
                   onChange={(e) => setReminderText(e.target.value)}
                 ></textarea>
               </div>
+              
               <button 
                 onClick={handleAddReminder} 
                 disabled={isSavingReminder || !reminderText.trim()}
-                className="btn w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4"
+                className="btn w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4 border-none"
               >
                 {isSavingReminder ? <span className="loading loading-spinner"></span> : 'Kaydet'}
               </button>

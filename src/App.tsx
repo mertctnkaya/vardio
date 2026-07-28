@@ -11,6 +11,9 @@ import Settings from './pages/settings';
 import Calculations from './pages/calculations';
 import Login from './pages/login';
 import Register from './pages/register';
+import FAQ from './pages/faq';
+import Contact from './pages/contact';
+import Admin from './pages/admin'; // YENİ: Admin sayfasını import ettik
 
 function Layout() {
   const shiftContext = useShiftCalculator();
@@ -37,7 +40,6 @@ function Layout() {
     if (data) useAppStore.getState().setSettings(data);
   };
 
-  // Çekmece menüyü linke tıklayınca otomatik kapatmak için
   const closeDrawer = () => {
     const drawer = document.getElementById('mobile-drawer') as HTMLInputElement;
     if (drawer) drawer.checked = false;
@@ -49,13 +51,16 @@ function Layout() {
     navigate('/login');
   };
 
+  // Kurucu kontrolü (Email doğrulaması)
+  const isFounder = user?.email === 'm3rt7132@gmail.com';
+
   return (
     <div className="drawer">
       <input id="mobile-drawer" type="checkbox" className="drawer-toggle" />
       
       <div className="drawer-content flex flex-col min-h-screen bg-base-300 items-center">
         {/* === ÜST NAVBAR === */}
-        <div className="navbar bg-base-100 shadow-xl mb-6 sm:mb-8 w-full z-10 px-2 sm:px-4">
+        <div className="navbar bg-base-100 shadow-xl mb-6 sm:mb-8 w-full z-10 px-2 sm:px-4 print:hidden">
           <div className="navbar-start">
             <label htmlFor="mobile-drawer" className="btn btn-ghost lg:hidden cursor-pointer">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-base-content" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,12 +73,23 @@ function Layout() {
           </div>
           
           <div className="navbar-center hidden lg:flex">
-            <ul className="menu menu-horizontal px-1 font-medium text-base-content gap-1">
+            <ul className="menu menu-horizontal px-1 font-medium text-base-content gap-1 items-center">
               <li><Link to="/" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Güncel Vardiya</Link></li>
               <li><Link to="/worktime" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Mesai Takvimim</Link></li>
               <li><Link to="/next-weeks" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Gelecek Haftalar</Link></li>
-              <li><Link to="/calculations" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Hesaplamalar</Link></li>
+              <li><Link to="/calculations" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Hesaplamalar&İşlemler</Link></li>
+              <li><Link to="/faq" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">S.S.S & Haklar</Link></li>
+              <li><Link to="/contact" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">İletişim</Link></li>
               <li><Link to="/settings" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Ayarlar</Link></li>
+              
+              {/* GİZLİ MASAÜSTÜ ADMİN LİNKİ */}
+              {isFounder && (
+                <li className="ml-2">
+                  <Link to="/admin" className="hover:text-emerald-300 focus:bg-emerald-500/20 text-emerald-400 font-bold bg-emerald-900/10 border border-emerald-500/20 rounded-lg shadow-inner">
+                    👑 Yönetici
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
           
@@ -99,23 +115,21 @@ function Layout() {
         </div>
 
         {/* === SAYFA İÇERİĞİ (OUTLET) === */}
-        {/* flex-grow sınıfı eklendi, böylece içerik az olsa bile footer her zaman en alta itilir */}
         <div className="w-full max-w-5xl px-4 pb-12 flex flex-col items-center flex-grow">
           <Outlet context={shiftContext} />
         </div>
 
         {/* === FOOTER (ALT BİLGİ) === */}
-        <footer className="w-full bg-[#16191d] border-t border-base-300 py-4 mt-auto z-10">
+        <footer className="w-full bg-[#16191d] border-t border-base-300 py-4 mt-auto z-10 print:hidden">
           <div className="max-w-5xl mx-auto px-6 flex justify-between items-center">
-            {/* Sol Boşluk (Ortalamak İçin) */}
-            <div className="flex-1 hidden sm:block"></div>
+            <div className="flex-1 hidden sm:block">
+              <Link to="/contact" className="text-sm font-medium text-base-content/50 hover:text-indigo-400 transition-colors">İletişim</Link>
+            </div>
             
-            {/* Orta - İmza */}
             <div className="flex-1 text-left sm:text-center text-sm font-medium text-base-content/50">
               made by <span className="text-indigo-500 font-black tracking-wide">m3rt</span>
             </div>
 
-            {/* Sağ - İletişim / Instagram */}
             <div className="flex-1 flex justify-end">
               <a 
                 href="https://instagram.com/merutou" 
@@ -144,11 +158,25 @@ function Layout() {
             </label>
           </div>
 
-          <li><Link to="/" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Güncel Vardiya</Link></li>
-          <li><Link to="/worktime" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Mesai Takvimim</Link></li>
-          <li><Link to="/next-weeks" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Gelecek Haftalar</Link></li>
-          <li><Link to="/calculations" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Hesaplamalar</Link></li>
-          <li><Link to="/settings" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400 focus:bg-indigo-500/20 active:bg-indigo-500/20">Ayarlar</Link></li>
+          <li><Link to="/" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">Güncel Vardiya</Link></li>
+          <li><Link to="/worktime" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">Mesai Takvimim</Link></li>
+          <li><Link to="/next-weeks" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">Gelecek Haftalar</Link></li>
+          <li><Link to="/calculations" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">Hesaplamalar&İşlemler</Link></li>
+          <li><Link to="/faq" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">S.S.S & Haklar</Link></li>
+          <li><Link to="/contact" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">İletişim</Link></li>
+          <li><Link to="/settings" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">Ayarlar</Link></li>
+          
+          {/* GİZLİ MOBİL ADMİN LİNKİ */}
+          {isFounder && (
+            <div className="mt-2">
+              <li>
+                <Link to="/admin" onClick={closeDrawer} className="text-lg py-3.5 font-bold text-emerald-400 bg-emerald-900/10 border border-emerald-500/20 hover:bg-emerald-900/30 rounded-xl shadow-inner flex items-center justify-between">
+                  👑 Yönetici Paneli
+                  <span className="badge badge-sm badge-success">Gizli</span>
+                </Link>
+              </li>
+            </div>
+          )}
           
           <div className="divider mt-4 mb-2"></div>
           
@@ -182,6 +210,9 @@ export default function App() {
           <Route path="worktime" element={<WorktimeCalendar />} />
           <Route path="settings" element={<Settings />} />
           <Route path="calculations" element={<Calculations />} />
+          <Route path="faq" element={<FAQ />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="admin" element={<Admin />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
         </Route>
