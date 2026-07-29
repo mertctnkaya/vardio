@@ -22,7 +22,7 @@ export default function UpdatePassword() {
     }
 
     // Supabase şifre sıfırlama işlemi için kullanıcıyı bu sayfaya otomatik oturum açmış olarak yönlendirir.
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, _session) => {
       if (event === 'PASSWORD_RECOVERY') {
         // Kurtarma modundayız, her şey yolunda.
       }
