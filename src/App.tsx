@@ -53,7 +53,6 @@ function Layout() {
     navigate('/login');
   };
 
-  // Kurucu kontrolü (Email doğrulaması)
   const isFounder = user?.email === 'm3rt7132@gmail.com';
 
   return (
