@@ -5,28 +5,43 @@ import { supabase } from '../lib/supabaseClient';
 export default function Settings() {
   const { user, setSettings } = useAppStore();
   const [_showAuthModal, setShowAuthModal] = useState(false);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const [workType, setWorkType] = useState('3-shift');
-  const [isSaturdayWorkday, setIsSaturdayWorkday] = useState(false); 
+  const [isSaturdayWorkday, setIsSaturdayWorkday] = useState(false);
   const [employmentStartDate, setEmploymentStartDate] = useState('2026-06-09');
   const [shiftEpochDate, setShiftEpochDate] = useState('2026-07-06');
-  
+
   const [shiftStartTime, setShiftStartTime] = useState('08:00');
-  const [shiftEndTime, setShiftEndTime] = useState('16:00'); 
-  const [shiftDuration, setShiftDuration] = useState('12'); 
-  
+  const [shiftEndTime, setShiftEndTime] = useState('16:00');
+  const [shiftDuration, setShiftDuration] = useState('12');
+
   const [monthlyGross, setMonthlyGross] = useState('');
   const [hourlyOvertime, setHourlyOvertime] = useState('');
-  const [baseWorkHours, setBaseWorkHours] = useState('7.5'); 
-  const [nightBonus, setNightBonus] = useState('10'); 
-  
-  const [saturdayMultiplier, setSaturdayMultiplier] = useState('1.5'); 
-  const [weekendMultiplier, setWeekendMultiplier] = useState('2'); 
-  const [holidayMultiplier, _setHolidayMultiplier] = useState('2'); 
+  const [baseWorkHours, setBaseWorkHours] = useState('7.5');
+  const [nightBonus, setNightBonus] = useState('10');
+
+  const [saturdayMultiplier, setSaturdayMultiplier] = useState('1.5');
+  const [weekendMultiplier, setWeekendMultiplier] = useState('2');
+  const [holidayMultiplier, _setHolidayMultiplier] = useState('2');
+
+  // YENİ: Bildirim durumu state'i
+  const [notificationStatus, setNotificationStatus] = useState<NotificationPermission>(
+    'Notification' in window ? Notification.permission : 'denied'
+  );
+
+  const requestNotificationPermission = () => {
+    if (!('Notification' in window)) {
+      alert("Tarayıcınız bildirimleri desteklemiyor.");
+      return;
+    }
+    Notification.requestPermission().then((permission) => {
+      setNotificationStatus(permission);
+    });
+  };
 
   useEffect(() => {
     async function loadSettings() {
@@ -36,7 +51,7 @@ export default function Settings() {
 
       if (data) {
         setWorkType(data.work_type || '3-shift');
-        setIsSaturdayWorkday(data.is_saturday_workday || false); 
+        setIsSaturdayWorkday(data.is_saturday_workday || false);
         if (data.employment_start_date) setEmploymentStartDate(data.employment_start_date);
         if (data.shift_epoch_date) setShiftEpochDate(data.shift_epoch_date);
         if (data.shift_start_time) setShiftStartTime(data.shift_start_time);
@@ -47,7 +62,7 @@ export default function Settings() {
         if (data.night_bonus_percent) setNightBonus(data.night_bonus_percent.toString());
         if (data.saturday_multiplier) setSaturdayMultiplier(data.saturday_multiplier.toString());
         if (data.weekend_multiplier) setWeekendMultiplier(data.weekend_multiplier.toString());
-        
+
         if (data.daily_wage) setMonthlyGross((data.daily_wage * 30).toFixed(2).replace(/\.00$/, ''));
       }
       setIsLoading(false);
@@ -88,9 +103,9 @@ export default function Settings() {
       employment_start_date: employmentStartDate,
       shift_epoch_date: shiftEpochDate,
       shift_start_time: shiftStartTime,
-      shift_end_time: finalEndTime, 
+      shift_end_time: finalEndTime,
       shift_duration: workType === '2-shift' ? Number(shiftDuration) : (workType === '3-shift' ? 8 : 0),
-      daily_wage: Number(monthlyGross) / 30, 
+      daily_wage: Number(monthlyGross) / 30,
       base_work_hours: Number(baseWorkHours),
       night_bonus_percent: Number(nightBonus) || 0,
       saturday_multiplier: Number(saturdayMultiplier) || 1.5,
@@ -105,8 +120,8 @@ export default function Settings() {
       setFeedback({ type: 'error', message: 'Hata: ' + error.message });
     } else {
       setFeedback({ type: 'success', message: 'Ayarlarınız başarıyla kaydedildi.' });
-      setSettings(data); 
-      setShiftEndTime(finalEndTime); 
+      setSettings(data);
+      setShiftEndTime(finalEndTime);
       setTimeout(() => setFeedback(null), 3000);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -116,7 +131,7 @@ export default function Settings() {
   return (
     <div className="flex flex-col items-center animate-fade-in w-full pb-10">
       <div className="w-full max-w-3xl bg-[#16191d] rounded-xl shadow-2xl border border-base-300 overflow-hidden relative">
-        
+
         {isLoading && (
           <div className="absolute inset-0 bg-base-100/50 backdrop-blur-sm z-10 flex items-center justify-center">
             <span className="loading loading-spinner loading-lg text-indigo-500"></span>
@@ -143,7 +158,7 @@ export default function Settings() {
         </div>
 
         <div className="p-6 sm:p-8 space-y-8">
-          
+
           {feedback?.type === 'success' && (
             <div className="bg-emerald-900/20 border border-emerald-500/30 text-emerald-400 text-sm p-4 rounded-lg flex items-center gap-3 shadow-sm">
               <span className="font-medium">{feedback.message}</span>
@@ -187,7 +202,7 @@ export default function Settings() {
               )}
             </div>
           </div>
-  
+
           <div>
             <h3 className="text-lg font-bold text-indigo-400 mb-4 border-b border-base-300 pb-2">2. Tarih Referansları</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -195,7 +210,7 @@ export default function Settings() {
                 <label className="label"><span className="label-text font-bold text-base-content/80">İşe Başlama Tarihi</span></label>
                 <input type="date" className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500" value={employmentStartDate} onChange={(e) => setEmploymentStartDate(e.target.value)} />
               </div>
-              
+
               {workType !== 'fixed' && (
                 <div className="form-control w-full animate-fade-in">
                   <label className="label"><span className="label-text font-bold text-base-content/80">Döngü Başlangıcı (Gündüz)</span></label>
@@ -204,11 +219,11 @@ export default function Settings() {
               )}
             </div>
           </div>
-          
+
           <div>
             <h3 className="text-lg font-bold text-indigo-400 mb-4 border-b border-base-300 pb-2">3. Bordro ve Ek Ödemeler</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              
+
               <div className="form-control w-full">
                 <label className="label"><span className="label-text font-bold text-base-content/80">Aylık Brüt Maaş (₺)</span></label>
                 <label className="input input-bordered flex items-center gap-2 bg-base-200 border-indigo-500/50">
@@ -250,7 +265,53 @@ export default function Settings() {
               {isSaving ? <span className="loading loading-spinner"></span> : 'Ayarları Kaydet'}
             </button>
           </div>
+          {/* ========================================= */}
+          {/* BİLDİRİM AYARLARI                         */}
+          {/* ========================================= */}
+          <div className="card bg-base-100 shadow-xl border border-base-200 animate-fade-in">
+            <div className="card-body">
+              <h2 className="card-title text-emerald-500 border-b border-base-200 pb-2 mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                Bildirim Ayarları
+              </h2>
 
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-200 p-4 rounded-xl border border-base-300">
+                <div>
+                  <h4 className="font-bold text-base-content text-lg">Akıllı Hatırlatıcılar</h4>
+                  <p className="text-sm text-base-content/60 mt-1 max-w-md"> Pazar gecesinden uyku düzeni uyarıları, resmi tatil çift yevmiye fırsatları ve kaydettiğiniz hatırlatıcıları vs. cihazınıza anlık bildirim olarak almak ister misiniz?</p>
+                </div>
+
+                <div>
+                  {notificationStatus === 'default' && (
+                    <button onClick={requestNotificationPermission} className="btn p-3 bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-lg shadow-emerald-900/40 w-full sm:w-auto">
+                      Bildirimleri Aç
+                    </button>
+                  )}
+
+                  {notificationStatus === 'granted' && (
+                    <div className="flex items-center gap-2 text-emerald-400 bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-500/30">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                      <span className="font-bold">Açık (Aktif)</span>
+                    </div>
+                  )}
+
+                  {notificationStatus === 'denied' && (
+                    <div className="flex flex-col items-end gap-2 text-right">
+                      <div className="flex items-center gap-2 text-red-400 bg-red-900/20 px-4 py-2 rounded-lg border border-red-500/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                        <span className="font-bold">Engellendi</span>
+                      </div>
+                      <span className="text-[10px] text-error max-w-[200px] leading-tight">
+                        * Tarayıcı adres çubuğundaki kilit (🔒) ikonuna tıklayıp engeli kaldırmalısınız.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -64,21 +64,18 @@ export default function Login() {
           </div>
 
           <div className="form-control w-full">
-            <label className="label">
-              <span className="label-text font-bold text-base-content/80">Şifre</span>
-            </label>
+            <label className="label pb-1"><span className="label-text font-bold text-base-content/80">Şifre</span></label>
             <input 
               type="password" 
-              placeholder="••••••••" 
-              className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 transition-all" 
+              placeholder="••••••" 
+              className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <label className="label mt-1">
-              <a href="#" className="label-text-alt text-base-content/40 cursor-not-allowed font-medium">
-                Şifremi Unuttum
-              </a>
+            {/* ŞİFREMİ UNUTTUM LİNKİ EKLENDİ */}
+            <label className="label pt-2 pb-0 justify-end">
+              <Link to="/forgot-password" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:underline transition-colors">Şifremi Unuttum</Link>
             </label>
           </div>
 

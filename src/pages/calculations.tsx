@@ -565,7 +565,7 @@ export default function Calculations() {
   };
 
   return (
-    <div className="flex flex-col items-center animate-fade-in w-full pb-10 p style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}">
+    <div className="flex flex-col items-center animate-fade-in w-full pb-10 style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}">
 
       <div className="w-full max-w-5xl mb-6 px-2 flex justify-between items-end">
         <div>
@@ -585,7 +585,7 @@ export default function Calculations() {
       </div>
 
       {activeTab === 'payroll' && (
-        <div className="w-full max-w-5xl space-y-6 animate-fade-in">
+        <div className="w-full max-w-5xl space-y-6 animate-fade-in style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}">
           {/* BORDRO DIŞA AKTARMA (EXPORT) BUTONLARI */}
           <div className="mt-8 bg-[#1e2329] rounded-xl border border-base-300 p-6 shadow-lg animate-fade-in print:hidden">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">

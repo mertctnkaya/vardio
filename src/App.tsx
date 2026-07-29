@@ -14,6 +14,8 @@ import Register from './pages/register';
 import FAQ from './pages/faq';
 import Contact from './pages/contact';
 import Admin from './pages/admin'; // YENİ: Admin sayfasını import ettik
+import ForgotPassword from './pages/forgotPassword';
+import UpdatePassword from './pages/updatePassword';
 
 function Layout() {
   const shiftContext = useShiftCalculator();
@@ -23,7 +25,7 @@ function Layout() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) loadUserSettings(session.user.id); 
+      if (session) loadUserSettings(session.user.id);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -34,7 +36,7 @@ function Layout() {
 
     return () => subscription.unsubscribe();
   }, [setSession]);
-  
+
   const loadUserSettings = async (userId: string) => {
     const { data } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
     if (data) useAppStore.getState().setSettings(data);
@@ -57,7 +59,7 @@ function Layout() {
   return (
     <div className="drawer">
       <input id="mobile-drawer" type="checkbox" className="drawer-toggle" />
-      
+
       <div className="drawer-content flex flex-col min-h-screen bg-base-300 items-center">
         {/* === ÜST NAVBAR === */}
         <div className="navbar bg-base-100 shadow-xl mb-6 sm:mb-8 w-full z-10 px-2 sm:px-4 print:hidden">
@@ -71,7 +73,7 @@ function Layout() {
               Vardiyake
             </Link>
           </div>
-          
+
           <div className="navbar-center hidden lg:flex">
             <ul className="menu menu-horizontal px-1 font-medium text-base-content gap-1 items-center">
               <li><Link to="/" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Güncel Vardiya</Link></li>
@@ -81,7 +83,7 @@ function Layout() {
               <li><Link to="/faq" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">S.S.S & Haklar</Link></li>
               <li><Link to="/contact" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">İletişim</Link></li>
               <li><Link to="/settings" className="hover:text-indigo-400 focus:bg-indigo-500/10 focus:text-indigo-400 rounded-lg">Ayarlar</Link></li>
-              
+
               {/* GİZLİ MASAÜSTÜ ADMİN LİNKİ */}
               {isFounder && (
                 <li className="ml-2">
@@ -92,7 +94,7 @@ function Layout() {
               )}
             </ul>
           </div>
-          
+
           <div className="navbar-end hidden lg:flex gap-3 pr-2">
             {user ? (
               <div className="flex items-center gap-4">
@@ -119,34 +121,34 @@ function Layout() {
           <Outlet context={shiftContext} />
         </div>
 
-        {/* === FOOTER (ALT BİLGİ) === */}
+        {/* === FOOTER (ALT BİLGİ) ===  */}
         <footer className="w-full bg-[#16191d] border-t border-base-300 py-4 mt-auto z-10 print:hidden">
           <div className="max-w-5xl mx-auto px-6 flex justify-between items-center">
             <div className="flex-1 hidden sm:block">
               <Link to="/contact" className="text-sm font-medium text-base-content/50 hover:text-indigo-400 transition-colors">İletişim</Link>
             </div>
-            
+
             <div className="flex-1 text-left sm:text-center text-sm font-medium text-base-content/50">
               made by <span className="text-indigo-500 font-black tracking-wide">m3rt</span>
             </div>
 
             <div className="flex-1 flex justify-end">
-              <a 
-                href="https://instagram.com/merutou" 
-                target="_blank" 
+              <a
+                href="https://instagram.com/merutou"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-base-content/50 hover:text-pink-500 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
                 </svg>
                 <span className="text-sm font-semibold tracking-wide">@merutou</span>
               </a>
             </div>
           </div>
         </footer>
-      </div> 
-      
+      </div>
+
       {/* === MOBİL ÇEKMECE MENÜ (DRAWER SIDEBAR) === */}
       <div className="drawer-side z-50">
         <label htmlFor="mobile-drawer" aria-label="close sidebar" className="drawer-overlay backdrop-blur-sm bg-black/40"></label>
@@ -165,7 +167,7 @@ function Layout() {
           <li><Link to="/faq" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">S.S.S & Haklar</Link></li>
           <li><Link to="/contact" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">İletişim</Link></li>
           <li><Link to="/settings" onClick={closeDrawer} className="text-lg py-3.5 font-medium rounded-xl hover:bg-indigo-500/10 hover:text-indigo-400">Ayarlar</Link></li>
-          
+
           {/* GİZLİ MOBİL ADMİN LİNKİ */}
           {isFounder && (
             <div className="mt-2">
@@ -177,9 +179,9 @@ function Layout() {
               </li>
             </div>
           )}
-          
+
           <div className="divider mt-4 mb-2"></div>
-          
+
           {user ? (
             <div className="mt-auto flex flex-col gap-4 pb-4">
               <div className="bg-[#1e2329] p-5 rounded-2xl text-center border border-base-300">
@@ -215,6 +217,8 @@ export default function App() {
           <Route path="admin" element={<Admin />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
+          <Route path="update-password" element={<UpdatePassword />} />
         </Route>
       </Routes>
     </BrowserRouter>

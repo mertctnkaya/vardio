@@ -333,6 +333,10 @@ export default function WorktimeCalendar() {
   const isFutureDay = selectedDay && !selectedDay.isPast && selectedDay.date.toDateString() !== actualToday.toDateString();
   const dateKeyForSelected = selectedDay ? getLocalDateString(selectedDay.date) : '';
   const existingLogForSelected = workLogs[dateKeyForSelected];
+  
+  // YENİ: Tıklanan günün resmi tatil olup olmadığını kontrol ediyoruz
+  const selectedHolidayName = TURKISH_HOLIDAYS_2026[dateKeyForSelected];
+  const isSelectedHoliday = !!selectedHolidayName;
 
   return (
     <div className="flex flex-col items-center animate-fade-in w-full pb-10" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
@@ -615,70 +619,70 @@ export default function WorktimeCalendar() {
               </div>
             )}
 
-            {(() => {
-              if (!selectedDay) return null;
-              // DÜZELTME: Modal içi tatil uyarısında da yerel saati kullandık
-              const modalHolidayName = TURKISH_HOLIDAYS_2026[getLocalDateString(selectedDay.date)];
-
-              if (modalHolidayName) {
-                return (
-                  <div className="mt-4 bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl flex gap-3 items-start shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-bold text-yellow-400">{modalHolidayName}</p>
-                      <p className="text-xs text-yellow-100/70 mt-1">
-                        Bu gün resmi tatildir. İşletme kurallarına göre bugün yapılan çalışmalar <strong>2 katı yevmiye</strong> ile ücretlendirilir.
-                      </p>
-                    </div>
-                  </div>
-                );
-              }
-              return null;
-            })()}
+            {/* RESMİ TATİL UYARISI (Modal İçi) */}
+            {selectedHolidayName && (
+              <div className="mt-4 bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-xl flex gap-3 items-start shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-bold text-yellow-400">{selectedHolidayName}</p>
+                  <p className="text-xs text-yellow-100/70 mt-1">
+                    Bu gün resmi tatildir. Yasal olarak bu güne <strong>Yıllık İzin</strong> veya <strong>Devamsızlık</strong> yazılamaz. Bugün çalıştıysanız "Resmi Tatil Mesaisi" seçeneğini işaretleyin.
+                  </p>
+                </div>
+              </div>
+            )}
             <br></br>
             <div className="form-control w-full mb-6">
               <label className="label pb-2"><span className="label-text font-bold text-base-content/80">Günlük Durum</span></label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-base-100 p-4 rounded-xl border border-base-300 w-full">
 
+                {/* NORMAL MESAİ */}
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
                   <input type="radio" name="status" className="radio radio-sm" disabled={isFutureDay ?? false} checked={dayStatus === 'normal'} onChange={() => handleStatusChange('normal')} />
                   <span className="label-text font-medium text-base-content/90">Normal Mesai</span>
                 </label>
 
-                <label className="label cursor-pointer justify-start gap-3 p-1 hover:bg-base-200 rounded-lg transition-colors">
-                  <input type="radio" name="status" className="radio radio-sm" checked={dayStatus === 'leave'} onChange={() => handleStatusChange('leave')} />
+                {/* ÜCRETLİ İZİN / RAPOR (Tatillerde kapalı) */}
+                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isSelectedHoliday ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
+                  <input type="radio" name="status" className="radio radio-sm" disabled={isSelectedHoliday} checked={dayStatus === 'leave'} onChange={() => handleStatusChange('leave')} />
                   <span className="label-text text-purple-400 font-bold">Ücretli İzinli/Raporlu</span>
                 </label>
 
-                <label className="label cursor-pointer justify-start gap-3 p-1 hover:bg-base-200 rounded-lg transition-colors">
-                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#ec4899' }} checked={dayStatus === 'annual_leave'} onChange={() => handleStatusChange('annual_leave')} />
+                {/* YILLIK İZİN (Tatillerde kapalı) */}
+                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isSelectedHoliday ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
+                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#ec4899'}} disabled={isSelectedHoliday} checked={dayStatus === 'annual_leave'} onChange={() => handleStatusChange('annual_leave')} />
                   <span className="label-text text-pink-400 font-bold">Yıllık İzin</span>
                 </label>
 
-                <label className="label cursor-pointer justify-start gap-3 p-1 hover:bg-base-200 rounded-lg transition-colors">
-                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#fde047' }} checked={dayStatus === 'holiday_work'} onChange={() => handleStatusChange('holiday_work')} />
+                {/* RESMİ TATİL MESAİSİ (Normal günlerde kapalı) */}
+                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${!isSelectedHoliday ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
+                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#fde047'}} disabled={!isSelectedHoliday} checked={dayStatus === 'holiday_work'} onChange={() => handleStatusChange('holiday_work')} />
                   <span className="label-text text-yellow-300 font-bold">Resmi Tatil Mesaisi</span>
                 </label>
 
-                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" disabled={isFutureDay ?? false} checked={dayStatus === 'absent'} onChange={() => handleStatusChange('absent')} />
+                {/* DEVAMSIZLIK (Gelecekte ve Tatillerde kapalı) */}
+                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${(isFutureDay || isSelectedHoliday) ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
+                  <input type="radio" name="status" className="radio radio-sm" disabled={(isFutureDay ?? false) || isSelectedHoliday} checked={dayStatus === 'absent'} onChange={() => handleStatusChange('absent')} />
                   <span className="label-text text-error font-bold">Devamsız / Ücretsiz</span>
                 </label>
 
+                {/* FAZLA MESAİ */}
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
                   <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#10b981' }} disabled={isFutureDay ?? false} checked={dayStatus === 'overtime'} onChange={() => handleStatusChange('overtime')} />
                   <span className="label-text text-emerald-500 font-bold">Fazla Mesai (+Ekstra)</span>
                 </label>
 
-                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#f97316' }} disabled={isFutureDay ?? false} checked={dayStatus === 'late'} onChange={() => handleStatusChange('late')} />
+                {/* GEÇ KALMA (Gelecekte ve Tatillerde kapalı) */}
+                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${(isFutureDay || isSelectedHoliday) ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
+                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#f97316'}} disabled={(isFutureDay ?? false) || isSelectedHoliday} checked={dayStatus === 'late'} onChange={() => handleStatusChange('late')} />
                   <span className="label-text text-orange-500 font-bold">Geç Kaldım (Kesinti)</span>
                 </label>
 
-                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isFutureDay ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" disabled={isFutureDay ?? false} checked={dayStatus === 'partial_leave'} onChange={() => handleStatusChange('partial_leave')} />
+                {/* SAATLİK İZİN (Gelecekte ve Tatillerde kapalı) */}
+                <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${(isFutureDay || isSelectedHoliday) ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
+                  <input type="radio" name="status" className="radio radio-sm" disabled={(isFutureDay ?? false) || isSelectedHoliday} checked={dayStatus === 'partial_leave'} onChange={() => handleStatusChange('partial_leave')} />
                   <span className="label-text text-sky-400 font-bold">Saatlik İzin / Erken Çıkma</span>
                 </label>
               </div>

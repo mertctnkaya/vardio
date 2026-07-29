@@ -8,21 +8,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Vardiya Hesaplayıcı',
-        short_name: 'Vardiya',
-        theme_color: '#000000',
-        icons: [
-          {
-            src: '/icon-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: '/icon-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
+        name: 'Vardio',
+        short_name: 'Vardio',
+        description: 'Akıllı Vardiya ve Bordro Takip Sistemi',
+        theme_color: '#4f46e5', // İndigo rengimiz
       }
     })
   ],
