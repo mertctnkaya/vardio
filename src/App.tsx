@@ -205,23 +205,27 @@ function Layout() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<CurrentShift />} />
-          <Route path="next-weeks" element={<NextWeeks />} />
-          <Route path="worktime" element={<WorktimeCalendar />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="calculations" element={<Calculations />} />
-          <Route path="faq" element={<FAQ />} />
-          <Route path="contact" element={<Contact />} />
-          <Route path="admin" element={<Admin />} />
-          <Route path="login" element={<Login />} />
-          <Route path="register" element={<Register />} />
-          <Route path="forgot-password" element={<ForgotPassword />} />
-          <Route path="update-password" element={<UpdatePassword />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <>
+      <Analytics />
+      <SpeedInsights />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<CurrentShift />} />
+            <Route path="next-weeks" element={<NextWeeks />} />
+            <Route path="worktime" element={<WorktimeCalendar />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="calculations" element={<Calculations />} />
+            <Route path="faq" element={<FAQ />} />
+            <Route path="contact" element={<Contact />} />
+            <Route path="admin" element={<Admin />} />
+            <Route path="login" element={<Login />} />
+            <Route path="register" element={<Register />} />
+            <Route path="forgot-password" element={<ForgotPassword />} />
+            <Route path="update-password" element={<UpdatePassword />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
