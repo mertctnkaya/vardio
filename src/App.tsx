@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route, Link, Outlet, useNavigate } from 'react-r
 import { useShiftCalculator } from './hooks/useShiftCalculator';
 import { supabase } from './lib/supabaseClient';
 import { useAppStore } from './store/useAppStore';
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 import CurrentShift from './pages/currentShift';
 import NextWeeks from './pages/nextWeeks';
