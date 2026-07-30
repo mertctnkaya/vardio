@@ -24,7 +24,7 @@ export default function FAQ() {
                 {/* === SİSTEM KULLANIMI (Adım Adım Rehber) === */}
                 {activeTab === 'usage' && (
                     <div className="space-y-6">
-                        <h3 className="text-xl font-bold text-indigo-400 mb-4 border-b border-base-300 pb-2">Vardiyake'ye Nereden Başlamalıyım?</h3>
+                        <h3 className="text-xl font-bold text-indigo-400 mb-4 border-b border-base-300 pb-2">Vardiyo'ya Nereden Başlamalıyım?</h3>
 
                         <p className="text-base-content/80 leading-relaxed mb-6">
                             Uygulamamız her yaştan çalışanın rahatça anlayabilmesi için adım adım tasarlanmıştır. Maaşınızı, mesailerinizi ve vardiyanızı tamamen size özel takip edebilmek için şu basit 5 adımı izlemeniz yeterlidir:

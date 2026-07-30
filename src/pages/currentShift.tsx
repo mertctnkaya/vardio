@@ -17,7 +17,7 @@ export default function CurrentShift() {
   const [isSavingReminder, setIsSavingReminder] = useState(false);
 
   const formattedDateValue = targetDate.toISOString().split("T")[0];
-  
+
   const [reminderStartDate, setReminderStartDate] = useState(formattedDateValue);
   const [reminderEndDate, setReminderEndDate] = useState('');
   const [reminderTimeRange, setReminderTimeRange] = useState('');
@@ -40,7 +40,7 @@ export default function CurrentShift() {
 
   const requestNotificationPermission = () => {
     if (!('Notification' in window)) return;
-    
+
     Notification.requestPermission().then((permission) => {
       if (permission === 'granted') {
         // İzin verildi! Şimdilik sadece teşekkür edip kapatıyoruz. (İleride buraya ServiceWorker kodu eklenecek)
@@ -79,7 +79,7 @@ export default function CurrentShift() {
       .eq('user_id', user.id)
       .order('is_completed', { ascending: true })
       .order('date', { ascending: true });
-      
+
     if (data) setReminders(data);
   }
 
@@ -111,8 +111,8 @@ export default function CurrentShift() {
   };
 
   const getShiftHours = () => {
-    if (!settings || currentShift.id === -1) return null; 
-    
+    if (!settings || currentShift.id === -1) return null;
+
     const start = settings.shift_start_time || '08:00';
     const type = settings.work_type || '3-shift';
     let duration = 8;
@@ -122,11 +122,11 @@ export default function CurrentShift() {
       return `${start} - ${settings.shift_end_time || '18:00'}`;
     } else if (type === '2-shift') {
       duration = Number(settings.shift_duration) || 12;
-      if (currentShift.id === 1) offset = duration; 
+      if (currentShift.id === 1) offset = duration;
     } else {
       duration = 8;
-      if (currentShift.id === 2) offset = 8;  
-      if (currentShift.id === 1) offset = 16; 
+      if (currentShift.id === 2) offset = 8;
+      if (currentShift.id === 1) offset = 16;
     }
 
     const shiftStart = calculateEndTime(start, offset);
@@ -137,7 +137,7 @@ export default function CurrentShift() {
   const handleAddReminder = async () => {
     if (!user || !reminderText.trim()) return;
     setIsSavingReminder(true);
-    
+
     const { error } = await supabase.from('reminders').insert({
       user_id: user.id,
       date: reminderStartDate,
@@ -172,7 +172,7 @@ export default function CurrentShift() {
 
     const targetDate = new Date(rem.end_date || rem.date);
     targetDate.setHours(0, 0, 0, 0);
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -193,7 +193,7 @@ export default function CurrentShift() {
 
   return (
     <div className="grid md:grid-cols-2 gap-8 animate-fade-in w-full pb-10">
-      
+
       <div className="card bg-base-100 shadow-xl border border-base-200">
         <div className="card-body items-center text-center w-full">
           <h2 className="card-title text-xl mb-4 text-base-content/80">
@@ -262,9 +262,9 @@ export default function CurrentShift() {
       {/* BİLGİLENDİRME KUTUSU (Çarpı butonlu ve LocalStorage destekli) */}
       {showWelcome && (
         <div className="md:col-span-2 mt-4 bg-indigo-900/10 border border-indigo-500/20 rounded-xl p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center gap-4 animate-fade-in relative">
-          
-          <button 
-            onClick={handleCloseWelcome} 
+
+          <button
+            onClick={handleCloseWelcome}
             className="absolute top-2 right-2 btn btn-xs btn-circle btn-ghost text-base-content/50 hover:text-base-content"
             title="Bir daha gösterme"
           >✕</button>
@@ -275,7 +275,7 @@ export default function CurrentShift() {
               <span className="sm:hidden">👋</span> Hoş Geldiniz! Sisteme Yabancı Mısınız?
             </h4>
             <p className="text-sm text-base-content/70 mt-1">
-              Vardiyake'nin nasıl çalıştığını, hesapların nasıl yapıldığını ve siteye nereden başlayacağınızı adım adım öğrenmek ister misiniz?
+              Vardiyo'nun nasıl çalıştığını, hesapların nasıl yapıldığını ve siteye nereden başlayacağınızı adım adım öğrenmek ister misiniz?
             </p>
           </div>
           <Link to="/faq" className="btn btn-sm h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white border-none shrink-0 w-full sm:w-auto mt-2 sm:mt-0 shadow-lg shadow-indigo-900/40">
@@ -287,28 +287,28 @@ export default function CurrentShift() {
       {/* YENİ: BİLDİRİM İZNİ KARTI */}
       {showNotificationPromo && (
         <div className="md:col-span-2 mt-2 bg-gradient-to-r from-emerald-900/40 to-[#16191d] border border-emerald-500/30 rounded-xl p-6 shadow-xl relative overflow-hidden animate-fade-in group">
-          <button 
+          <button
             onClick={dismissNotificationPromo}
             className="absolute top-2 right-2 btn btn-xs btn-circle btn-ghost text-base-content/50 hover:text-base-content z-10"
             title="Şimdilik geç"
           >✕</button>
-          
+
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/20 transition-all"></div>
-          
+
           <div className="flex flex-col sm:flex-row items-center gap-6 relative z-10">
             <div className="w-16 h-16 shrink-0 bg-emerald-900/50 rounded-full flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-emerald-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
             </div>
-            
+
             <div className="flex-1 text-center sm:text-left">
               <h4 className="font-bold text-emerald-400 text-lg">Vardiya Dönüşlerini Kaçırmayın!</h4>
               <p className="text-sm text-base-content/70 mt-1">
                 Pazar gecesinden uyku düzeni uyarıları, resmi tatil çift yevmiye fırsatları ve kaydettiğiniz hatırlatıcıları vs. cihazınıza anlık bildirim olarak almak ister misiniz?
               </p>
             </div>
-            
+
             <div className="flex flex-col gap-2 w-full sm:w-auto shrink-0 mr-0 sm:mr-2">
               <button onClick={requestNotificationPermission} className="btn p-3 bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-lg shadow-emerald-900/40">
                 Evet, Bildirimleri Aç
@@ -336,16 +336,16 @@ export default function CurrentShift() {
             + Yeni Hatırlatma
           </button>
         </div>
-        
+
         <div className="p-4 sm:p-6">
           {reminders.length > 0 ? (
             <div className="space-y-3">
               {reminders.map((rem) => (
                 <div key={rem.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all ${rem.is_completed ? 'bg-base-300/50 border-base-300/50 opacity-50' : 'bg-base-100 border-base-300 shadow-sm'}`}>
                   <div className="flex items-start gap-4 mb-3 sm:mb-0">
-                    <input 
-                      type="checkbox" 
-                      className="checkbox checkbox-primary mt-1" 
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-primary mt-1"
                       checked={rem.is_completed}
                       onChange={() => toggleReminder(rem.id, rem.is_completed)}
                     />
@@ -354,7 +354,7 @@ export default function CurrentShift() {
                         <p className={`font-medium ${rem.is_completed ? 'line-through text-base-content/60' : 'text-base-content'}`}>{rem.content}</p>
                         {getStatusBadge(rem)}
                       </div>
-                      
+
                       <div className="flex items-center gap-3 text-xs text-indigo-400 font-medium">
                         <span className="flex items-center gap-1">
                           📅 {rem.end_date ? `${formatDateLabel(rem.date)} - ${formatDateLabel(rem.end_date)}` : formatDateLabel(rem.date)}
@@ -392,22 +392,22 @@ export default function CurrentShift() {
               <button onClick={() => setShowReminderModal(false)} className="btn btn-sm btn-circle btn-ghost">✕</button>
             </div>
             <div className="p-6 space-y-4">
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="form-control w-full">
                   <label className="label"><span className="label-text font-bold text-base-content/80">Başlangıç Tarihi</span></label>
-                  <input 
-                    type="date" 
-                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm" 
+                  <input
+                    type="date"
+                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm"
                     value={reminderStartDate}
                     onChange={(e) => setReminderStartDate(e.target.value)}
                   />
                 </div>
                 <div className="form-control w-full">
                   <label className="label"><span className="label-text font-bold text-base-content/80">Bitiş (Opsiyonel)</span></label>
-                  <input 
-                    type="date" 
-                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm" 
+                  <input
+                    type="date"
+                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm"
                     value={reminderEndDate}
                     onChange={(e) => setReminderEndDate(e.target.value)}
                     min={reminderStartDate}
@@ -417,9 +417,9 @@ export default function CurrentShift() {
 
               <div className="form-control w-full">
                 <label className="label"><span className="label-text font-bold text-base-content/80">Saat Aralığı (Opsiyonel)</span></label>
-                <input 
-                  type="text" 
-                  className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 placeholder-base-content/30" 
+                <input
+                  type="text"
+                  className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 placeholder-base-content/30"
                   placeholder="Örn: 14:00 - 16:00"
                   value={reminderTimeRange}
                   onChange={(e) => setReminderTimeRange(e.target.value)}
@@ -428,16 +428,16 @@ export default function CurrentShift() {
 
               <div className="form-control w-full">
                 <label className="label"><span className="label-text font-bold text-base-content/80">Notunuz</span></label>
-                <textarea 
-                  className="textarea textarea-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 h-24 pt-3 resize-none" 
+                <textarea
+                  className="textarea textarea-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 h-24 pt-3 resize-none"
                   placeholder="Mesai talebi, doktor randevusu vs..."
                   value={reminderText}
                   onChange={(e) => setReminderText(e.target.value)}
                 ></textarea>
               </div>
-              
-              <button 
-                onClick={handleAddReminder} 
+
+              <button
+                onClick={handleAddReminder}
                 disabled={isSavingReminder || !reminderText.trim()}
                 className="btn w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4 border-none"
               >

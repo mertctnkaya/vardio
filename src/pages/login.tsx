@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
@@ -32,14 +32,14 @@ export default function Login() {
   return (
     <div className="flex flex-col items-center justify-center animate-fade-in w-full mt-10 sm:mt-20 px-4">
       <div className="w-full max-w-md bg-base-100 rounded-2xl shadow-2xl border border-base-300 overflow-hidden">
-        
+
         <div className="bg-base-200 border-b border-base-300 p-6 text-center">
-          <h2 className="text-3xl font-black text-indigo-500 tracking-wide">Vardiyake</h2>
+          <h2 className="text-3xl font-black text-indigo-500 tracking-wide">Vardiyo</h2>
           <p className="text-sm text-base-content/60 mt-2">Hesabınıza giriş yapın</p>
         </div>
 
         <form onSubmit={handleLogin} className="p-6 sm:p-8 space-y-6">
-          
+
           {errorMsg && (
             <div className="bg-red-900/20 border border-red-500/30 text-red-400 text-sm p-3 rounded-lg flex items-center gap-2 shadow-sm">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,10 +53,10 @@ export default function Login() {
             <label className="label">
               <span className="label-text font-bold text-base-content/80">E-posta Adresi</span>
             </label>
-            <input 
-              type="email" 
-              placeholder="ornek@email.com" 
-              className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 transition-all" 
+            <input
+              type="email"
+              placeholder="ornek@email.com"
+              className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 transition-all"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -65,10 +65,10 @@ export default function Login() {
 
           <div className="form-control w-full">
             <label className="label pb-1"><span className="label-text font-bold text-base-content/80">Şifre</span></label>
-            <input 
-              type="password" 
-              placeholder="••••••" 
-              className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500" 
+            <input
+              type="password"
+              placeholder="••••••"
+              className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -79,8 +79,8 @@ export default function Login() {
             </label>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="btn w-full bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-lg shadow-indigo-900/50 mt-4"
           >

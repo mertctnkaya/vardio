@@ -71,7 +71,7 @@ function Layout() {
               </svg>
             </label>
             <Link to="/" className="btn btn-ghost text-xl text-indigo-500 font-black tracking-wide ml-1 lg:ml-0">
-              Vardiyake
+              Vardiyo
             </Link>
           </div>
 
@@ -155,7 +155,7 @@ function Layout() {
         <label htmlFor="mobile-drawer" aria-label="close sidebar" className="drawer-overlay backdrop-blur-sm bg-black/40"></label>
         <ul className="menu p-6 w-[80vw] max-w-sm min-h-full bg-base-100 text-base-content gap-2 shadow-2xl flex flex-col">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-base-300">
-            <span className="text-2xl font-black text-indigo-500 tracking-wide">Vardiyake</span>
+            <span className="text-2xl font-black text-indigo-500 tracking-wide">Vardiyo</span>
             <label htmlFor="mobile-drawer" className="btn btn-square btn-ghost btn-sm text-base-content/60 hover:text-base-content">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </label>

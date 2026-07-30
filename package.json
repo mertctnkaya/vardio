@@ -1,7 +1,7 @@
 {
-  "name": "vardio",
+  "name": "vardiyo",
   "version": "1.0.0",
-  "description": "Vardio B2C - Çalışan odaklı akıllı vardiya ve bordro takip sistemi",
+  "description": "vardiyo B2C - Çalışan odaklı akıllı vardiya ve bordro takip sistemi",
   "author": "m3rt",
   "private": true,
   "type": "module",

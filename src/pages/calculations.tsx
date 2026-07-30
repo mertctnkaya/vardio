@@ -349,7 +349,7 @@ export default function Calculations() {
     const { error, data } = await supabase.from('user_settings')
       .update({ past_used_leave: 0, updated_at: new Date().toISOString() })
       .eq('user_id', user.id).select().single();
-      
+
     if (!error && data) {
       setSettings(data);
       setLeaveFeedback({ type: 'success', message: 'Geçmiş izin kullanımları sıfırlandı!' });
@@ -493,7 +493,7 @@ export default function Calculations() {
   const getCalcExportName = (prefix: string) => {
     const dateStr = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(payrollDate).replace(/\s+/g, '_');
     const userName = user?.user_metadata?.name ? user.user_metadata.name.replace(/\s+/g, '_') : 'Rapor';
-    return `Vardiyake_${prefix}_${dateStr}_${userName}`;
+    return `Vardiyo_${prefix}_${dateStr}_${userName}`;
   };
 
   const printCalcToPDF = (prefix: string) => {

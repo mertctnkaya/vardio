@@ -14,7 +14,7 @@ interface DayDetail {
 }
 
 const TURKISH_HOLIDAYS_2026: Record<string, string> = {
-  "2026-01-01": "Yılbaşı", 
+  "2026-01-01": "Yılbaşı",
   "2026-03-19": "Ramazan Bayramı Arifesi",
   "2026-03-20": "Ramazan Bayramı 1. Gün",
   "2026-03-21": "Ramazan Bayramı 2. Gün",
@@ -264,19 +264,19 @@ export default function WorktimeCalendar() {
 
     // NOT sütunu gizlilik gereği tamamen kaldırıldı
     let csvContent = "\uFEFFTarih,Vardiya,Durum,Saat (Ek/Eksik)\n";
-    
+
     calendarDays.forEach(item => {
       if (!item.isCurrentMonth || item.date < employmentStartDate) return;
-      
+
       const dateStr = getLocalDateString(item.date);
       const log = workLogs[dateStr];
       const shift = getShiftForDate(item.date);
-      
+
       let statusStr = shift.isOffDay ? 'Hafta Tatili' : 'Normal Mesai';
       if (log && log.status) {
         statusStr = statusMap[log.status] || log.status;
       }
-      
+
       const hours = log?.hours ? log.hours : '';
       csvContent += `${dateStr},${shift.name},${statusStr},${hours}\n`;
     });
@@ -285,12 +285,12 @@ export default function WorktimeCalendar() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    
+
     // Özel Dosya İsimlendirme Motoru
     const monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(baseDate);
     const userName = user?.user_metadata?.name ? user.user_metadata.name.replace(/\s+/g, '_') : 'Rapor';
-    link.setAttribute("download", `Vardiyake_${monthName}_${userName}.csv`);
-    
+    link.setAttribute("download", `Vardiyo_${monthName}_${userName}.csv`);
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -308,12 +308,12 @@ export default function WorktimeCalendar() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    
+
     // Özel Dosya İsimlendirme Motoru
     const monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(baseDate);
     const userName = user?.user_metadata?.name ? user.user_metadata.name.replace(/\s+/g, '_') : 'Yedek';
-    link.setAttribute("download", `Vardiyake_${monthName}_${userName}.json`);
-    
+    link.setAttribute("download", `Vardiyo_${monthName}_${userName}.json`);
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -323,9 +323,9 @@ export default function WorktimeCalendar() {
     // Tarayıcı PDF adını <title> etiketinden alır. Geçici olarak değiştiriyoruz.
     const monthName = new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(baseDate);
     const userName = user?.user_metadata?.name ? user.user_metadata.name.replace(/\s+/g, '_') : 'Rapor';
-    
+
     const originalTitle = document.title;
-    document.title = `Vardiyake_${monthName}_${userName}`;
+    document.title = `Vardiyo_${monthName}_${userName}`;
     window.print();
     document.title = originalTitle; // İşlem bitince orjinal isme geri dön
   };
@@ -333,7 +333,7 @@ export default function WorktimeCalendar() {
   const isFutureDay = selectedDay && !selectedDay.isPast && selectedDay.date.toDateString() !== actualToday.toDateString();
   const dateKeyForSelected = selectedDay ? getLocalDateString(selectedDay.date) : '';
   const existingLogForSelected = workLogs[dateKeyForSelected];
-  
+
   // YENİ: Tıklanan günün resmi tatil olup olmadığını kontrol ediyoruz
   const selectedHolidayName = TURKISH_HOLIDAYS_2026[dateKeyForSelected];
   const isSelectedHoliday = !!selectedHolidayName;
@@ -451,47 +451,47 @@ export default function WorktimeCalendar() {
           })}
         </div>
         {/* YENİ: YASAL DEVAMSIZLIK UYARISI MOTORU */}
-      {(() => {
-        let absentCount = 0;
-        let maxConsecutiveAbsent = 0;
-        let currentConsecutive = 0;
+        {(() => {
+          let absentCount = 0;
+          let maxConsecutiveAbsent = 0;
+          let currentConsecutive = 0;
 
-        calendarDays.forEach(item => {
-          if (!item.isCurrentMonth || item.date < employmentStartDate) return;
-          const dateKey = getLocalDateString(item.date);
-          const log = workLogs[dateKey];
-          const isOffDay = getShiftForDate(item.date).isOffDay;
-          
-          if (log && log.status === 'absent') {
-            absentCount++;
-            currentConsecutive++;
-            if (currentConsecutive > maxConsecutiveAbsent) maxConsecutiveAbsent = currentConsecutive;
-          } else if (!isOffDay) { 
-            // Tatil olmayan bir mesai gününe gelindiğinde ardışıklık sıfırlanır
-            currentConsecutive = 0;
-          }
-        });
+          calendarDays.forEach(item => {
+            if (!item.isCurrentMonth || item.date < employmentStartDate) return;
+            const dateKey = getLocalDateString(item.date);
+            const log = workLogs[dateKey];
+            const isOffDay = getShiftForDate(item.date).isOffDay;
 
-        // KANUN: Ardı ardına 2 gün VEYA toplamda 3 gün
-        const showDangerWarning = absentCount >= 3 || maxConsecutiveAbsent >= 2;
+            if (log && log.status === 'absent') {
+              absentCount++;
+              currentConsecutive++;
+              if (currentConsecutive > maxConsecutiveAbsent) maxConsecutiveAbsent = currentConsecutive;
+            } else if (!isOffDay) {
+              // Tatil olmayan bir mesai gününe gelindiğinde ardışıklık sıfırlanır
+              currentConsecutive = 0;
+            }
+          });
 
-        if (showDangerWarning) {
-          return (
-            <div className="w-full max-w-4xl mt-6 bg-red-900/10 border-l-4 border-red-500 rounded-r-xl p-5 shadow-sm animate-fade-in flex gap-4 items-start">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500 shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div>
-                <h4 className="font-bold text-red-500 text-lg">Yasal Uyarı: Devamsızlık Tehlike Sınırı!</h4>
-                <p className="text-sm text-base-content/80 mt-1">
-                  Bu ay içerisinde <strong>{maxConsecutiveAbsent >= 2 ? 'ardı ardına 2 gün' : 'toplam 3 gün'}</strong> devamsızlık yaptığınız tespit edildi. İş Kanunu Madde 25/II gereğince; mazeretsiz devamsızlıklar işverene <strong className="text-red-400">Tazminatsız Haklı Fesih (İşten Çıkarma)</strong> hakkı tanır. Lütfen durumunuzu yöneticinizle görüşün.
-                </p>
+          // KANUN: Ardı ardına 2 gün VEYA toplamda 3 gün
+          const showDangerWarning = absentCount >= 3 || maxConsecutiveAbsent >= 2;
+
+          if (showDangerWarning) {
+            return (
+              <div className="w-full max-w-4xl mt-6 bg-red-900/10 border-l-4 border-red-500 rounded-r-xl p-5 shadow-sm animate-fade-in flex gap-4 items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500 shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <h4 className="font-bold text-red-500 text-lg">Yasal Uyarı: Devamsızlık Tehlike Sınırı!</h4>
+                  <p className="text-sm text-base-content/80 mt-1">
+                    Bu ay içerisinde <strong>{maxConsecutiveAbsent >= 2 ? 'ardı ardına 2 gün' : 'toplam 3 gün'}</strong> devamsızlık yaptığınız tespit edildi. İş Kanunu Madde 25/II gereğince; mazeretsiz devamsızlıklar işverene <strong className="text-red-400">Tazminatsız Haklı Fesih (İşten Çıkarma)</strong> hakkı tanır. Lütfen durumunuzu yöneticinizle görüşün.
+                  </p>
+                </div>
               </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
+            );
+          }
+          return null;
+        })()}
       </div>
 
       <div className="w-full max-w-4xl mt-6 bg-[#16191d] rounded-xl border border-base-300 p-6 shadow-lg animate-fade-in">
@@ -652,13 +652,13 @@ export default function WorktimeCalendar() {
 
                 {/* YILLIK İZİN (Tatillerde kapalı) */}
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${isSelectedHoliday ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#ec4899'}} disabled={isSelectedHoliday} checked={dayStatus === 'annual_leave'} onChange={() => handleStatusChange('annual_leave')} />
+                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#ec4899' }} disabled={isSelectedHoliday} checked={dayStatus === 'annual_leave'} onChange={() => handleStatusChange('annual_leave')} />
                   <span className="label-text text-pink-400 font-bold">Yıllık İzin</span>
                 </label>
 
                 {/* RESMİ TATİL MESAİSİ (Normal günlerde kapalı) */}
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${!isSelectedHoliday ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#fde047'}} disabled={!isSelectedHoliday} checked={dayStatus === 'holiday_work'} onChange={() => handleStatusChange('holiday_work')} />
+                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#fde047' }} disabled={!isSelectedHoliday} checked={dayStatus === 'holiday_work'} onChange={() => handleStatusChange('holiday_work')} />
                   <span className="label-text text-yellow-300 font-bold">Resmi Tatil Mesaisi</span>
                 </label>
 
@@ -676,7 +676,7 @@ export default function WorktimeCalendar() {
 
                 {/* GEÇ KALMA (Gelecekte ve Tatillerde kapalı) */}
                 <label className={`label justify-start gap-3 p-1 rounded-lg transition-colors ${(isFutureDay || isSelectedHoliday) ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:bg-base-200'}`}>
-                  <input type="radio" name="status" className="radio radio-sm" style={{accentColor: '#f97316'}} disabled={(isFutureDay ?? false) || isSelectedHoliday} checked={dayStatus === 'late'} onChange={() => handleStatusChange('late')} />
+                  <input type="radio" name="status" className="radio radio-sm" style={{ accentColor: '#f97316' }} disabled={(isFutureDay ?? false) || isSelectedHoliday} checked={dayStatus === 'late'} onChange={() => handleStatusChange('late')} />
                   <span className="label-text text-orange-500 font-bold">Geç Kaldım (Kesinti)</span>
                 </label>
 
