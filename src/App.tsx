@@ -4,6 +4,7 @@ import { useShiftCalculator } from './hooks/useShiftCalculator';
 import { supabase } from './lib/supabaseClient';
 import { useAppStore } from './store/useAppStore';
 import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 import CurrentShift from './pages/currentShift';
 import NextWeeks from './pages/nextWeeks';
