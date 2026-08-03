@@ -42,7 +42,6 @@ Vardiyo sadece ön yüzü güzel bir hesap makinesi değil, bulut tabanlı bir S
 * **Tech Stack:** React, TypeScript, Tailwind CSS, Supabase (PostgreSQL).
 * **Veri Güvenliği (Kriptolu Altyapı):** Girdiğiniz mesailer cihazınızın tarayıcısında (Local Storage) tutulmaz. Telefonunuz bozulsa bile e-postanızla giriş yapıp kaldığınız yerden devam edebilirsiniz.
 * **Sıkıyönetim (RLS):** Supabase üzerinde uygulanan "Row Level Security" kuralları sayesinde, veritabanına doğrudan bağlantı sağlansa dahi kimse başkasının vardiyasını, maaş ayarını veya iletişim mesajlarını göremez.
-* **Role-Based Admin (Superuser):** Uygulama içinde gizli bir yönetici paneli bulunur. Bu panel sadece kurucu hesaba açılır. Sisteme binen yükü (istatistikleri) ve iletişim mesajlarını takip edebilir, kullanıcıların premium (gelişmiş analiz) özelliklerini tek tuşla açıp kapatabilirsiniz. Yetki yükseltme hilelerine karşı veritabanı "Trigger"ları ile zırhlanmıştır.
 
 ---
 
