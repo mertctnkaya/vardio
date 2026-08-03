@@ -4,11 +4,18 @@ import { supabase } from '../lib/supabaseClient';
 export const updateUserSettings = async (userId: string, payload: any) => {
   const { data, error } = await supabase
     .from('user_settings')
-    .update({ ...payload, updated_at: new Date().toISOString() })
-    .eq('user_id', userId)
+    .upsert(
+      { 
+        user_id: userId,
+        ...payload, 
+        updated_at: new Date().toISOString() 
+      }, 
+      { 
+        onConflict: 'user_id' // Eğer bu user_id zaten varsa üstüne yaz, yoksa yeni satır aç
+      }
+    )
     .select()
     .single();
-    
   return { data, error };
 };
 
