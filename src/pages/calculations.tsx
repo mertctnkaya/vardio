@@ -1,42 +1,45 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { supabase } from '../lib/supabaseClient';
-
-// 2026 Yılı Türkiye Yasal Kesinti Oranları ve İstisnaları
-const CONSTANTS = {
-  SGK_RATE: 0.14,
-  UNEMPLOYMENT_RATE: 0.01,
-  STAMP_TAX_RATE: 0.00759,
-  TAX_RATE_TIER_1: 0.15,
-  MIN_WAGE_GV_EXEMPTION: 4211.33,
-  MIN_WAGE_DV_EXEMPTION: 250.70
-};
+import { fetchMonthWorkLogs, updateUserSettings } from '../services/dbService';
+import { generatePayrollData } from '../core/payrollEngine';
+import { calculateSeverance } from '../core/severanceEngine';
+import { calculateWageFromMonthlyTarget, calculateWageFromHourlyTarget } from '../core/hourlyEngine';
+import { printDocumentAsPDF, downloadDataAsJSON, generateFileName } from '../utils/exportUtils';
+import ExportPanel from '../components/shared/ExportPanel';
 
 export default function Calculations() {
   const { settings, user, setSettings } = useAppStore();
   const [activeTab, setActiveTab] = useState<'payroll' | 'annual_leave' | 'tazminat' | 'hourly' | 'tools'>('payroll');
 
+  // =========================================================
+  // STATE'LER
+  // =========================================================
   const [payrollDate, setPayrollDate] = useState(new Date());
   const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
   const [fetchedLogs, setFetchedLogs] = useState<any[]>([]);
 
-  // Yıllık İzin State'leri
+  // Yıllık İzin
   const [knownLeaveBalance, setKnownLeaveBalance] = useState('');
   const [isSavingLeave, setIsSavingLeave] = useState(false);
   const [leaveFeedback, setLeaveFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
-  // Tazminat State'leri
+  // Tazminat
   const [terminationDate, setTerminationDate] = useState(new Date().toISOString().split('T')[0]);
   const [payNotice, setPayNotice] = useState(true);
 
-  // Saatlik Hesap State'leri
+  // Saatlik Hesap
   const [hourlyInputType, setHourlyInputType] = useState<'net' | 'gross'>('net');
   const [hourlyInputValue, setHourlyInputValue] = useState('');
   const [hourlyCalcResults, setHourlyCalcResults] = useState<{ monthlyGross: number, dailyGross: number, hourlyGross: number, overtimeGross: number } | null>(null);
 
-  // --- GERÇEK BORDRO GİRDİLERİ (Aylık Brüt Inputu Ayarlara Bağlandığı İçin Silindi) ---
-  const [besDeduction, setBesDeduction] = useState('0'); // Varsayılan 0
+  // Bordro ve Araçlar
+  const [besDeduction, setBesDeduction] = useState('0');
   const [otherDeductions, setOtherDeductions] = useState('0');
+  const [calcTargetType, setCalcTargetType] = useState<'gross' | 'net'>('net');
+  const [calcTargetValue, setCalcTargetValue] = useState('');
+  const [calcResults, setCalcResults] = useState<{ monthlyGross: number, dailyGross: number, hourlyGross: number, overtimeGross: number } | null>(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const [payrollData, setPayrollData] = useState({
     baseGrossInfo: { daily: 0, hourly: 0 },
@@ -51,221 +54,21 @@ export default function Calculations() {
     stats: { payrollDays: 0, activeDays: 0, passedDays: 0, absentDays: 0, lateHours: 0, overtimeHours: 0, holidayWorkDays: 0, annualLeaveDays: 0 }
   });
 
+  // =========================================================
+  // 1. VERİ ÇEKME VE BORDRO HESAPLAMA MOTORU (Core)
+  // =========================================================
   const fetchWorkLogs = async () => {
     if (!user) return;
     setIsLoadingPayroll(true);
-    try {
-      const year = payrollDate.getFullYear();
-      const month = payrollDate.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const firstDayStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-      const lastDayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
-
-      const { data: logs } = await supabase.from('work_logs').select('*').eq('user_id', user.id).gte('log_date', firstDayStr).lte('log_date', lastDayStr);
-      setFetchedLogs(logs || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoadingPayroll(false);
-    }
-  };
-
-  // --- GECE SAATİ (22:00 - 06:00) HESAPLAMA YARDIMCISI ---
-  const calculateNightHours = (startTimeStr: string, durationHours: number) => {
-    if (!startTimeStr || durationHours <= 0) return 0;
-    const [h, m] = startTimeStr.split(':').map(Number);
-    let nightMins = 0;
-    let currentMin = h * 60 + m;
-
-    for (let i = 0; i < durationHours * 60; i++) {
-      let minOfDay = (currentMin + i) % (24 * 60);
-      // Gece tanımı: 22:00 (1320. dk) ile 06:00 (360. dk) arası
-      if (minOfDay >= 1320 || minOfDay < 360) {
-        nightMins++;
-      }
-    }
-    return nightMins / 60;
-  };
-
-  // --- ANA BORDRO MOTORU (BRÜT -> NET) ---
-  const calculatePayrollMotor = () => {
-    if (!settings) return;
-
     const year = payrollDate.getFullYear();
     const month = payrollDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-    const logsMap: Record<string, any> = {};
-    fetchedLogs.forEach(log => logsMap[log.log_date] = log);
-
-    // KATSAYILAR (Ana veri AYARLARDAN OTOMATİK ÇEKİLİR)
-    const dailyGross = Number(settings.daily_wage) || 0;
-    const baseWorkHours = Number(settings.base_work_hours) || 7.5;
-    const hourlyGross = dailyGross / baseWorkHours;
-
-    const overtimeMultiplier = 1.5;
-    const nightBonusPercent = Number(settings.night_bonus_percent) || 0;
-    const hourlyNightBonus = hourlyGross * (nightBonusPercent / 100);
-    const holidayMultiplier = Number(settings.holiday_multiplier) || 2;
-
-    // BAŞLANGIÇ TARİHİ KONTROLÜ
-    const empDateStr = settings.employment_start_date || '2026-06-09';
-    const [eYear, eMonth, eDay] = empDateStr.split('-').map(Number);
-    const employmentStart = new Date(eYear, eMonth - 1, eDay);
-
-    const epDateStr = settings.shift_epoch_date || '2026-07-06';
-    const [epYear, epMonth, epDay] = epDateStr.split('-').map(Number);
-    const epochDate = new Date(epYear, epMonth - 1, epDay);
-
-    const workType = settings.work_type || '3-shift';
-    const shiftStartTime = settings.shift_start_time || '08:00';
-    const isSaturdayWork = settings.is_saturday_workday || false;
-    const MS_PER_WEEK = 1000 * 60 * 60 * 24 * 7;
-
-    let stats = { payrollDays: 30, activeDays: 0, passedDays: 0, absentDays: 0, lateHours: 0, overtimeHours: 0, holidayWorkDays: 0, annualLeaveDays: 0 };
-    let calculatedNightHours = 0;
-
-    const actualToday = new Date();
-    actualToday.setHours(0, 0, 0, 0);
-
-    // 1. ADIM: TAKVİM DÖNGÜSÜ
-    for (let i = 1; i <= daysInMonth; i++) {
-      const currentDate = new Date(year, month, i);
-
-      // İşe girişten önceki günler maaşa dahil edilmez
-      if (currentDate < employmentStart) {
-        continue;
-      }
-
-      stats.activeDays++;
-      // Bugün dahil, bu ay yaşanmış olan günleri say (Temmuz bug'ı çözümü)
-      if (currentDate <= actualToday) {
-        stats.passedDays++;
-      }
-
-      const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      const log = logsMap[dateKey];
-
-      const dayOfWeek = currentDate.getDay();
-      const isSunday = dayOfWeek === 0;
-      const isSaturday = dayOfWeek === 6;
-      const isOffDay = workType === 'fixed' ? (isSunday || (!isSaturdayWork && isSaturday)) : isSunday;
-
-      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const monday = new Date(currentDate);
-      monday.setDate(currentDate.getDate() + diffToMonday);
-      monday.setHours(0, 0, 0, 0);
-      const diffMs = monday.getTime() - epochDate.getTime();
-      const deltaWeeks = Math.floor(diffMs / MS_PER_WEEK);
-
-      // Vardiya Saatini Tespit Et
-      let currentShiftStart = shiftStartTime;
-      // Gece saati hesaplanırken vardiyanın tam penceresi taranır (3'lü sistemde 8 saat)
-      let shiftPhysicalDuration = workType === '3-shift' ? 8 : (Number(settings.shift_duration) || 12);
-
-      if (workType === '3-shift') {
-        const shiftIndex = ((deltaWeeks % 3) + 3) % 3;
-        const [sh, sm] = shiftStartTime.split(':').map(Number);
-        if (shiftIndex === 1) { // Gece Vardiyası (00:00 - 08:00)
-          currentShiftStart = `${String((sh + 16) % 24).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-        } else if (shiftIndex === 2) { // Akşam Vardiyası (16:00 - 24:00)
-          currentShiftStart = `${String((sh + 8) % 24).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-        }
-      } else if (workType === '2-shift') {
-        const shiftIndex = ((deltaWeeks % 2) + 2) % 2;
-        const [sh, sm] = shiftStartTime.split(':').map(Number);
-        if (shiftIndex === 1) {
-          currentShiftStart = `${String((sh + 12) % 24).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-        }
-      }
-
-      const processNightHours = () => {
-        calculatedNightHours += calculateNightHours(currentShiftStart, shiftPhysicalDuration);
-      };
-
-      if (log) {
-        if (log.status === 'absent') stats.absentDays++;
-        else if (log.status === 'late' || log.status === 'partial_leave') {
-          stats.lateHours += (Number(log.hours) || 0);
-          if (!isOffDay) processNightHours();
-        }
-        else if (log.status === 'overtime') {
-          stats.overtimeHours += (Number(log.hours) || 0);
-          if (!isOffDay) processNightHours();
-        }
-        else if (log.status === 'holiday_work') {
-          stats.holidayWorkDays++;
-          if (!isOffDay) processNightHours();
-        }
-        // Eksik olan kritik satır:
-        else if (log.status === 'annual_leave') {
-          stats.annualLeaveDays++;
-        }
-        else if (log.status === 'normal' || log.status === 'leave') {
-          if (!isOffDay) processNightHours();
-        }
-      } else {
-        // Log yoksa sadece bugüne kadar yaşanmış günlerin gece saatlerini ekle
-        if (currentDate <= actualToday) {
-          if (!isOffDay) processNightHours();
-        }
-      }
-    }
-
-    // 2. ADIM: BRÜT HAKEDİŞLER
-    // Gelecek aylarda 0, geçmiş aylarda aktif gün kadar, içinde bulunduğumuz ayda sadece yaşanmış günler kadar hesapla
-    const isPastMonth = (year < actualToday.getFullYear()) || (year === actualToday.getFullYear() && month < actualToday.getMonth());
-    const basePayrollDays = isPastMonth ? Math.min(30, stats.activeDays) : Math.min(30, stats.passedDays);
-
-    const baseGrossPay = basePayrollDays * dailyGross;
-
-    const overtimeGrossPay = stats.overtimeHours * hourlyGross * overtimeMultiplier;
-    const holidayWorkGrossPay = stats.holidayWorkDays * dailyGross * holidayMultiplier;
-    const nightBonusGrossPay = calculatedNightHours * hourlyNightBonus;
-
-    const totalGrossHakedis = baseGrossPay + overtimeGrossPay + holidayWorkGrossPay + nightBonusGrossPay;
-
-    // 3. ADIM: BRÜT KESİNTİLER
-    const absentDeductionGross = stats.absentDays * dailyGross;
-    const lateDeductionGross = stats.lateHours * hourlyGross;
-    const totalGrossKesinti = absentDeductionGross + lateDeductionGross;
-
-    // 4. ADIM: YENİ BRÜT MATRAH
-    const newGrossMatrah = totalGrossHakedis - totalGrossKesinti;
-
-    // 5. ADIM: YASAL KESİNTİLER (Yeni Brüt Üzerinden)
-    const sgkCut = newGrossMatrah * CONSTANTS.SGK_RATE;
-    const unempCut = newGrossMatrah * CONSTANTS.UNEMPLOYMENT_RATE;
-    const taxBase = newGrossMatrah - sgkCut - unempCut;
-
-    const incomeTaxRaw = taxBase * CONSTANTS.TAX_RATE_TIER_1;
-    const incomeTaxFinal = Math.max(0, incomeTaxRaw - CONSTANTS.MIN_WAGE_GV_EXEMPTION);
-
-    const stampTaxRaw = newGrossMatrah * CONSTANTS.STAMP_TAX_RATE;
-    const stampTaxFinal = Math.max(0, stampTaxRaw - CONSTANTS.MIN_WAGE_DV_EXEMPTION);
-
-    const totalYasalKesinti = sgkCut + unempCut + incomeTaxFinal + stampTaxFinal;
-
-    // 6. ADIM: NET MAAŞ
-    const netMaaş = newGrossMatrah - totalYasalKesinti;
-
-    // 7. ADIM: ÖZEL KESİNTİLER VE HESABA YATAN
-    const bes = Number(besDeduction) || 0;
-    const others = Number(otherDeductions) || 0;
-    const hesabaYatanNet = netMaaş - bes - others;
-
-    setPayrollData({
-      baseGrossInfo: { daily: dailyGross, hourly: hourlyGross },
-      incomes: { baseMonth: baseGrossPay, overtime: overtimeGrossPay, nightBonus: nightBonusGrossPay, holidayWork: holidayWorkGrossPay, totalGrossHakedis: totalGrossHakedis, extra: 0 },
-      deductionsGross: { absent: absentDeductionGross, late: lateDeductionGross, totalGrossKesinti },
-      newGrossMatrah,
-      taxes: { sgk: sgkCut, unemployment: unempCut, incomeTax: incomeTaxFinal, stampTax: stampTaxFinal, totalYasalKesinti },
-      netMaaş,
-      netKesintiler: { bes, other: others, total: bes + others },
-      hesabaYatanNet,
-      calculatedNightHours,
-      stats: { ...stats, payrollDays: basePayrollDays }
-    });
+    const logsMap = await fetchMonthWorkLogs(user.id, firstDayStr, lastDayStr);
+    setFetchedLogs(logsMap ? Object.values(logsMap) : []);
+    setIsLoadingPayroll(false);
   };
 
   useEffect(() => {
@@ -273,49 +76,45 @@ export default function Calculations() {
   }, [payrollDate, activeTab]);
 
   useEffect(() => {
-    calculatePayrollMotor();
-  }, [fetchedLogs, settings, besDeduction, otherDeductions]);
+    if (!settings) return;
+    // Dışarıdaki saf matematiksel motor çağrılıyor
+    const computedData = generatePayrollData(settings, fetchedLogs, payrollDate, besDeduction, otherDeductions);
+    setPayrollData(computedData);
+  }, [fetchedLogs, settings, besDeduction, otherDeductions, payrollDate]);
 
-  // =========================================================================
-  // ARAÇLAR İÇİN DÖNÜŞTÜRÜCÜ VE KATSAYI KAYIT İŞLEMİ
-  // =========================================================================
-  const [calcTargetType, setCalcTargetType] = useState<'gross' | 'net'>('net');
-  const [calcTargetValue, setCalcTargetValue] = useState('');
-  const [calcResults, setCalcResults] = useState<{ monthlyGross: number, dailyGross: number, hourlyGross: number, overtimeGross: number } | null>(null);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  // =========================================================
+  // 2. TAZMİNAT MOTORU (Core)
+  // =========================================================
+  const severanceData = useMemo(() => {
+    return calculateSeverance(settings, terminationDate, payNotice);
+  }, [settings, terminationDate, payNotice]);
 
+  // =========================================================
+  // 3. SAATLİK VE AYLIK ÜCRET HESAPLAMA MOTORLARI (Core)
+  // =========================================================
   const performCalculation = () => {
     const cleanValue = calcTargetValue.replace(/\./g, '').replace(',', '.');
     const val = Number(cleanValue);
     if (!val || val <= 0) return;
 
-    let monthlyGross = 0;
-
-    if (calcTargetType === 'gross') {
-      monthlyGross = val;
-    } else {
-      if (val > 4462) {
-        monthlyGross = (val - 4462.03) / 0.71491;
-      } else {
-        monthlyGross = val / 0.85;
-      }
-    }
-
     const baseHours = settings?.base_work_hours ? Number(settings.base_work_hours) : 7.5;
-    const dailyGross = monthlyGross / 30;
-    const hourlyGross = dailyGross / baseHours;
-    const overtimeGross = hourlyGross * 1.5;
-
-    setCalcResults({
-      monthlyGross: Number(monthlyGross.toFixed(2)),
-      dailyGross: Number(dailyGross.toFixed(2)),
-      hourlyGross: Number(hourlyGross.toFixed(2)),
-      overtimeGross: Number(overtimeGross.toFixed(2))
-    });
+    const result = calculateWageFromMonthlyTarget(val, calcTargetType, baseHours);
+    setCalcResults(result);
   };
 
-  // YILLIK İZİN BAKİYE EŞİTLEME FONKSİYONU
+  const performHourlyCalculation = () => {
+    const cleanValue = hourlyInputValue.replace(/\./g, '').replace(',', '.');
+    const val = Number(cleanValue);
+    if (!val || val <= 0) return;
+
+    const baseHours = settings?.base_work_hours ? Number(settings.base_work_hours) : 7.5;
+    const result = calculateWageFromHourlyTarget(val, hourlyInputType, baseHours);
+    setHourlyCalcResults(result);
+  };
+
+  // =========================================================
+  // 4. VERİTABANI GÜNCELLEME (Services)
+  // =========================================================
   const saveLeaveBalance = async (earnedLeave: number) => {
     if (!user || knownLeaveBalance === '') return;
     setIsSavingLeave(true);
@@ -323,14 +122,7 @@ export default function Calculations() {
     const val = Number(knownLeaveBalance);
     const pastUsed = Math.max(0, earnedLeave - val);
 
-    // upsert yerine update kullanıyoruz
-    const { error, data } = await supabase.from('user_settings')
-      .update({
-        past_used_leave: pastUsed,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user.id)
-      .select().single();
+    const { error, data } = await updateUserSettings(user.id, { past_used_leave: pastUsed });
 
     if (!error && data) {
       setSettings(data);
@@ -346,9 +138,7 @@ export default function Calculations() {
   const resetLeaveBalance = async () => {
     if (!user) return;
     setIsSavingLeave(true);
-    const { error, data } = await supabase.from('user_settings')
-      .update({ past_used_leave: 0, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id).select().single();
+    const { error, data } = await updateUserSettings(user.id, { past_used_leave: 0 });
 
     if (!error && data) {
       setSettings(data);
@@ -358,92 +148,39 @@ export default function Calculations() {
     setIsSavingLeave(false);
   };
 
-  // ARAÇLAR İÇİN DÖNÜŞTÜRÜCÜ VE KATSAYI KAYIT İŞLEMİ
   const saveToSettings = async () => {
     if (!user || !calcResults) return;
     setIsSavingSettings(true);
 
-    const { error, data } = await supabase.from('user_settings')
-      .update({
-        daily_wage: calcResults.dailyGross,
-        hourly_overtime: calcResults.overtimeGross,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user.id)
-      .select().single();
+    const { error, data } = await updateUserSettings(user.id, {
+      daily_wage: calcResults.dailyGross,
+      hourly_overtime: calcResults.overtimeGross
+    });
 
     if (!error && data) {
       setSettings(data);
       setFeedback({ type: 'success', message: 'Maaş katsayılarınız sisteme otomatik kaydedildi!' });
-      setTimeout(() => {
-        setFeedback(null);
-        setCalcResults(null);
-        setCalcTargetValue('');
-      }, 3000);
+      setTimeout(() => { setFeedback(null); setCalcResults(null); setCalcTargetValue(''); }, 3000);
     } else {
       setFeedback({ type: 'error', message: 'Kaydedilirken hata oluştu: ' + (error?.message || '') });
       setTimeout(() => setFeedback(null), 3000);
     }
     setIsSavingSettings(false);
-  };
-
-  const performHourlyCalculation = () => {
-    const cleanValue = hourlyInputValue.replace(/\./g, '').replace(',', '.');
-    const val = Number(cleanValue);
-    if (!val || val <= 0) return;
-
-    const baseHours = settings?.base_work_hours ? Number(settings.base_work_hours) : 7.5;
-
-    let monthlyGross = 0;
-    let hourlyGross = 0;
-
-    if (hourlyInputType === 'gross') {
-      hourlyGross = val;
-      monthlyGross = hourlyGross * baseHours * 30;
-    } else {
-      const dailyNet = val * baseHours;
-      const monthlyNet = dailyNet * 30;
-
-      if (monthlyNet > 4462) {
-        monthlyGross = (monthlyNet - 4462.03) / 0.71491;
-      } else {
-        monthlyGross = monthlyNet / 0.85;
-      }
-      hourlyGross = (monthlyGross / 30) / baseHours;
-    }
-
-    const dailyGross = monthlyGross / 30;
-    const overtimeGross = hourlyGross * 1.5;
-
-    setHourlyCalcResults({
-      monthlyGross: Number(monthlyGross.toFixed(2)),
-      dailyGross: Number(dailyGross.toFixed(2)),
-      hourlyGross: Number(hourlyGross.toFixed(2)),
-      overtimeGross: Number(overtimeGross.toFixed(2))
-    });
   };
 
   const saveHourlyToSettings = async () => {
     if (!user || !hourlyCalcResults) return;
     setIsSavingSettings(true);
 
-    const { error, data } = await supabase.from('user_settings')
-      .update({
-        daily_wage: hourlyCalcResults.dailyGross,
-        hourly_overtime: hourlyCalcResults.overtimeGross,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user.id)
-      .select().single();
+    const { error, data } = await updateUserSettings(user.id, {
+      daily_wage: hourlyCalcResults.dailyGross,
+      hourly_overtime: hourlyCalcResults.overtimeGross
+    });
 
     if (!error && data) {
       setSettings(data);
       setFeedback({ type: 'success', message: 'Saatlik katsayılarınız sisteme kaydedildi!' });
-      setTimeout(() => {
-        setFeedback(null);
-        setHourlyCalcResults(null);
-        setHourlyInputValue('');
-      }, 3000);
+      setTimeout(() => { setFeedback(null); setHourlyCalcResults(null); setHourlyInputValue(''); }, 3000);
     } else {
       setFeedback({ type: 'error', message: 'Kaydedilirken hata oluştu: ' + (error?.message || '') });
       setTimeout(() => setFeedback(null), 3000);
@@ -451,56 +188,15 @@ export default function Calculations() {
     setIsSavingSettings(false);
   };
 
-  // YENİ: Tazminat Hesaplama Motoru (Dışa aktarabilmek için buraya alındı)
-  const severanceData = useMemo(() => {
-    const start = new Date(settings?.employment_start_date || '2026-06-09');
-    const end = new Date(terminationDate);
-
-    const diffTime = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const yearsWorked = diffDays / 365.25;
-
-    const monthlyGross = (settings?.daily_wage || 0) * 30;
-
-    let severanceGross = 0;
-    if (yearsWorked >= 1) severanceGross = yearsWorked * monthlyGross;
-    const severanceStampTax = severanceGross * CONSTANTS.STAMP_TAX_RATE;
-    const severanceNet = Math.max(0, severanceGross - severanceStampTax);
-
-    let noticeWeeks = 0;
-    if (yearsWorked < 0.5) noticeWeeks = 2;
-    else if (yearsWorked < 1.5) noticeWeeks = 4;
-    else if (yearsWorked < 3) noticeWeeks = 6;
-    else noticeWeeks = 8;
-
-    let noticeGross = 0;
-    if (payNotice) noticeGross = (monthlyGross / 30) * 7 * noticeWeeks;
-
-    const noticeIncomeTax = noticeGross * 0.15;
-    const noticeStampTax = noticeGross * CONSTANTS.STAMP_TAX_RATE;
-    const noticeNet = Math.max(0, noticeGross - noticeIncomeTax - noticeStampTax);
-
-    const totalNet = severanceNet + noticeNet;
-
-    return {
-      yearsWorked, severanceGross, severanceStampTax, severanceNet,
-      noticeWeeks, noticeGross, noticeIncomeTax, noticeStampTax, noticeNet,
-      totalNet
-    };
-  }, [settings, terminationDate, payNotice]);
-
-  // --- HESAPLAMALAR DIŞA AKTARMA (EXPORT) MOTORLARI ---
+  // =========================================================
+  // 5. DIŞA AKTARMA MOTORLARI (Utils)
+  // =========================================================
   const getCalcExportName = (prefix: string) => {
-    const dateStr = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(payrollDate).replace(/\s+/g, '_');
-    const userName = user?.user_metadata?.name ? user.user_metadata.name.replace(/\s+/g, '_') : 'Rapor';
-    return `Vardiyo_${prefix}_${dateStr}_${userName}`;
+    return generateFileName(`Vardiyo_${prefix}`, payrollDate, user?.user_metadata?.name, '');
   };
 
   const printCalcToPDF = (prefix: string) => {
-    const originalTitle = document.title;
-    document.title = getCalcExportName(prefix);
-    window.print();
-    document.title = originalTitle;
+    printDocumentAsPDF(getCalcExportName(prefix));
   };
 
   const exportPayrollCSV = () => {
@@ -530,11 +226,7 @@ export default function Calculations() {
   };
 
   const exportPayrollJSON = () => {
-    const blob = new Blob([JSON.stringify(payrollData, null, 2)], { type: 'application/json' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${getCalcExportName('Bordro')}.json`;
-    link.click();
+    downloadDataAsJSON(`${getCalcExportName('Bordro')}.json`, payrollData);
   };
 
   const exportTazminatCSV = () => {
@@ -557,11 +249,7 @@ export default function Calculations() {
   };
 
   const exportTazminatJSON = () => {
-    const blob = new Blob([JSON.stringify(severanceData, null, 2)], { type: 'application/json' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${getCalcExportName('Tazminat')}.json`;
-    link.click();
+    downloadDataAsJSON(`${getCalcExportName('Tazminat')}.json`, severanceData);
   };
 
   return (
@@ -586,26 +274,14 @@ export default function Calculations() {
 
       {activeTab === 'payroll' && (
         <div className="w-full max-w-5xl space-y-6 animate-fade-in style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}">
-          {/* BORDRO DIŞA AKTARMA (EXPORT) BUTONLARI */}
-          <div className="mt-8 bg-[#1e2329] rounded-xl border border-base-300 p-6 shadow-lg animate-fade-in print:hidden">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div>
-                <h4 className="font-bold text-base-content text-lg">Bordroyu Dışa Aktar</h4>
-                <p className="text-sm text-base-content/60 mt-1">Hesaplanan aylık bordro dökümünüzü cihazınıza indirin veya yazdırın.</p>
-              </div>
-              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                <button onClick={exportPayrollCSV} className="btn btn-sm sm:btn-md p-3 bg-green-900/30 text-green-400 hover:bg-green-600 hover:text-white border-green-500/30 flex-1 sm:flex-none">
-                  Excel (CSV)
-                </button>
-                <button onClick={() => printCalcToPDF('Bordro')} className="btn btn-sm sm:btn-md p-3 bg-red-900/30 text-red-400 hover:bg-red-600 hover:text-white border-red-500/30 flex-1 sm:flex-none">
-                  Yazdır / PDF
-                </button>
-                <button onClick={exportPayrollJSON} className="btn btn-sm sm:btn-md p-3 btn-ghost bg-gray-700 border-base-300 text-base-content/60 hover:bg-base-200 flex-1 sm:flex-none">
-                  JSON
-                </button>
-              </div>
-            </div>
-          </div>
+          
+          <ExportPanel 
+            title="Bordroyu Dışa Aktar"
+            description="Hesaplanan aylık bordro dökümünüzü cihazınıza indirin veya yazdırın."
+            onExportCSV={exportPayrollCSV}
+            onPrintPDF={() => printCalcToPDF('Bordro')}
+            onExportJSON={exportPayrollJSON}
+          />
 
           <div className="bg-[#16191d] rounded-xl border border-base-300 p-4 flex justify-between items-center shadow-lg">
             <button onClick={() => setPayrollDate(new Date(payrollDate.getFullYear(), payrollDate.getMonth() - 1, 1))} className="btn btn-sm btn-ghost hover:bg-base-200">&laquo; Önceki Ay</button>
@@ -663,7 +339,7 @@ export default function Calculations() {
                       <span className="font-bold text-base-content">+{payrollData.incomes.baseMonth.toFixed(2)} ₺</span>
                     </div>
                     <div className="flex justify-between items-end border-b border-base-300/50 pb-2">
-                      <p className="text-base-content/80 font-medium">Gece Primi (22:00-06:00 / {payrollData.calculatedNightHours} Saat)</p>
+                      <p className="text-base-content/80 font-medium">Gece Primi (20:00-06:00 / {payrollData.calculatedNightHours} Saat)</p>
                       <span className="font-bold text-emerald-400">+{payrollData.incomes.nightBonus.toFixed(2)} ₺</span>
                     </div>
                     {payrollData.stats.overtimeHours > 0 && (
@@ -777,9 +453,8 @@ export default function Calculations() {
             nextLeaveDate.setFullYear(start.getFullYear() + yearsWorked + 1);
             const nextLeaveDays = (yearsWorked + 1) <= 5 ? 14 : ((yearsWorked + 1) < 15 ? 20 : 26);
 
-            // Veritabanından gelen geçmiş izin kullanımları ve bu ay takvimden gelenler
             const pastUsed = settings?.past_used_leave || 0;
-            const usedThisMonth = payrollData.stats.annualLeaveDays || 0; // Bu ayki takvim işaretlemeleri
+            const usedThisMonth = payrollData.stats.annualLeaveDays || 0;
             const totalUsedLeave = pastUsed + usedThisMonth;
             const remainingLeave = earnedLeave - totalUsedLeave;
 
@@ -917,25 +592,13 @@ export default function Calculations() {
               <p className="text-xs text-base-content/40 mt-3">* Tavan uygulaması hesaplamaya dahil edilmemiş olup, gelir vergisi sabit %15 kabul edilmiştir.</p>
             </div>
 
-            {/* TAZMİNAT DIŞA AKTARMA (EXPORT) BUTONLARI */}
-            <div className="mt-8 bg-[#16191d] rounded-xl border border-base-300 p-6 shadow-sm animate-fade-in print:hidden">
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div>
-                  <h4 className="font-bold text-base-content text-lg">Raporu Dışa Aktar</h4>
-                </div>
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  <button onClick={exportTazminatCSV} className="btn btn-sm sm:btn-md p-3 bg-green-900/30 text-green-400 hover:bg-green-600 hover:text-white border-green-500/30 flex-1 sm:flex-none">
-                    Excel (CSV)
-                  </button>
-                  <button onClick={() => printCalcToPDF('Tazminat')} className="btn btn-sm sm:btn-md p-3 bg-red-900/30 text-red-400 hover:bg-red-600 hover:text-white border-red-500/30 flex-1 sm:flex-none">
-                    Yazdır / PDF
-                  </button>
-                  <button onClick={exportTazminatJSON} className="btn btn-sm sm:btn-md p-3 btn-ghost bg-gray-700 border-base-300 text-base-content/60 hover:bg-base-200 flex-1 sm:flex-none">
-                    JSON
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ExportPanel 
+              title="Raporu Dışa Aktar"
+              description="Kıdem ve ihbar tazminatı dökümünüzü indirin veya yazdırın."
+              onExportCSV={exportTazminatCSV}
+              onPrintPDF={() => printCalcToPDF('Tazminat')}
+              onExportJSON={exportTazminatJSON}
+            />
 
           </div>
         </div>
@@ -1047,7 +710,7 @@ export default function Calculations() {
                 Hesapla
               </button>
 
-              {feedback && (
+              {feedback && activeTab === 'tools' && (
                 <div className={`mt-4 p-3 rounded-lg text-sm font-bold flex justify-center animate-fade-in ${feedback.type === 'success' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                   {feedback.message}
                 </div>

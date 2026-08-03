@@ -1,18 +1,21 @@
 import { create } from 'zustand';
-import type { Session, User } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js'; // Session eklendi
+import type { UserSettings } from '../types';
 
 interface AppState {
-  session: Session | null;
   user: User | null;
-  settings: any | null;
-  setSession: (session: Session | null) => void;
-  setSettings: (settings: any | null) => void;
+  session: Session | null; // Session eklendi
+  settings: UserSettings | null;
+  setUser: (user: User | null) => void;
+  setSession: (session: Session | null) => void; // Eksik olan fonksiyon eklendi
+  setSettings: (settings: UserSettings | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  session: null,
   user: null,
+  session: null,
   settings: null,
-  setSession: (session) => set({ session, user: session?.user || null }),
+  setUser: (user) => set({ user }),
+  setSession: (session) => set({ session }), // Fonksiyonun işlevi eklendi
   setSettings: (settings) => set({ settings }),
 }));

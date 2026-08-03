@@ -2,6 +2,7 @@ import { useOutletContext, Link } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
+import type { Reminder } from '../types';
 
 type ShiftContextType = ReturnType<
   typeof import("../hooks/useShiftCalculator").useShiftCalculator
@@ -11,7 +12,7 @@ export default function CurrentShift() {
   const { targetDate, setTargetDate, currentShift } = useOutletContext<ShiftContextType>();
   const { user, settings } = useAppStore();
 
-  const [reminders, setReminders] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [reminderText, setReminderText] = useState('');
   const [isSavingReminder, setIsSavingReminder] = useState(false);
@@ -167,7 +168,7 @@ export default function CurrentShift() {
     fetchReminders();
   };
 
-  const getStatusBadge = (rem: any) => {
+  const getStatusBadge = (rem: Reminder) => {
     if (rem.is_completed) return null;
 
     const targetDate = new Date(rem.end_date || rem.date);

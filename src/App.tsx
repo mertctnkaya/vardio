@@ -21,28 +21,49 @@ import UpdatePassword from './pages/updatePassword';
 
 function Layout() {
   const shiftContext = useShiftCalculator();
-  const { user, setSession } = useAppStore();
+  const { user, setUser, setSession, setSettings } = useAppStore();
   const navigate = useNavigate();
 
+  
   useEffect(() => {
+    // 1. Ayarları Veritabanından Çekme Fonksiyonu
+    const fetchSettings = async (userId: string) => {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (data) {
+        setSettings(data);
+      } else {
+        console.error("Ayarlar çekilemedi:", error);
+      }
+    };
+
+    // 2. İlk açılışta mevcut oturumu kontrol et
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) loadUserSettings(session.user.id);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchSettings(session.user.id);
+      }
     });
 
+    // 3. Giriş yapıldığında veya çıkış yapıldığında otomatik tetiklenen dinleyici
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) loadUserSettings(session.user.id);
-      else useAppStore.getState().setSettings(null);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchSettings(session.user.id); // Giriş yapınca ayarları çek
+      } else {
+        setSettings(null); // Çıkış yapınca ayarları temizle
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [setSession]);
-
-  const loadUserSettings = async (userId: string) => {
-    const { data } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
-    if (data) useAppStore.getState().setSettings(data);
-  };
+  }, [setUser, setSession, setSettings]);
 
   const closeDrawer = () => {
     const drawer = document.getElementById('mobile-drawer') as HTMLInputElement;
