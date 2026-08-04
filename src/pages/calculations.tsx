@@ -22,11 +22,11 @@ export default function Calculations() {
       {/* SEKMELER (TABS) MENÜSÜ */}
       <div className="w-full max-w-5xl px-2 mb-6 print:hidden">
         <div className="tabs tabs-boxed bg-[#16191d] p-1 border border-base-300 flex-wrap justify-center sm:justify-start">
-          <button className={`tab tab-lg ${activeTab === 'payroll' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('payroll')}>Aylık Bordro</button>
-          <button className={`tab tab-lg ${activeTab === 'annual_leave' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('annual_leave')}>Yıllık İzin</button>
-          <button className={`tab tab-lg ${activeTab === 'tazminat' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('tazminat')}>Tazminat Hesapla</button>
-          <button className={`tab tab-lg ${activeTab === 'hourly' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('hourly')}>Saatlikten Bul</button>
-          <button className={`tab tab-lg ${activeTab === 'tools' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('tools')}>Araçlar (Aylıktan)</button>
+          <a className={`tab tab-lg ${activeTab === 'payroll' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('payroll')}>Aylık Bordro</a>
+          <a className={`tab tab-lg ${activeTab === 'annual_leave' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('annual_leave')}>Yıllık İzin</a>
+          <a className={`tab tab-lg ${activeTab === 'tazminat' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('tazminat')}>Tazminat Hesapla</a>
+          <a className={`tab tab-lg ${activeTab === 'hourly' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('hourly')}>Saatlikten Bul</a>
+          <a className={`tab tab-lg ${activeTab === 'tools' ? 'bg-indigo-600 text-white' : 'text-base-content/60 hover:text-white transition-colors'}`} onClick={() => setActiveTab('tools')}>Araçlar (Aylıktan)</a>
         </div>
       </div>
 
