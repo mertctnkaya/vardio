@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useAppStore } from '../store/useAppStore';
 import StatCard from '../components/shared/StatCard';
 import type { ContactMessage, AdminUser } from '../types';
+import Alert from '../components/shared/Alert';
 
 export default function AdminPanel() {
   const { user, settings } = useAppStore();
@@ -150,8 +151,12 @@ export default function AdminPanel() {
               <div className="w-full bg-[#16191d] rounded-xl shadow-2xl border border-base-300 overflow-hidden px-2 sm:px-0">
 
                 {actionFeedback && (
-                  <div className="bg-emerald-900/50 border-b border-emerald-500/30 p-4 text-emerald-400 font-bold text-center">
-                    {actionFeedback}
+                  <div className="mb-4">
+                    <Alert color={actionFeedback.includes('Hata') ? 'red' : 'emerald'}
+                    title={actionFeedback.includes('Hata') ? 'Hata' : 'Başarılı'} 
+                    icon={actionFeedback.includes('Hata') ? "warning" : "check"} bgStyle="colored" borderStyle="colored">
+                      {actionFeedback}
+                    </Alert>
                   </div>
                 )}
 
@@ -270,14 +275,10 @@ export default function AdminPanel() {
                 <StatCard title="Girilen Mesailer" value={stats.logsCount} desc="Takvime işlenmiş toplam gün/vardiya" colorTheme="emerald" iconName="calendar" />
                 <StatCard title="Hatırlatıcılar" value={stats.remindersCount} desc="Kullanıcıların eklediği toplam not/hatırlatma" colorTheme="orange" iconName="bell" />
 
-                <div className="md:col-span-3 bg-emerald-900/10 border border-emerald-500/20 rounded-2xl p-6 mt-4 flex items-start gap-4 shadow-inner">
-                  <span className="text-2xl mt-1">💡</span>
-                  <div>
-                    <h4 className="font-bold text-emerald-400">Yönetici Notu</h4>
-                    <p className="text-sm text-base-content/70 mt-1">
-                      Kullanıcıların şifreleri, e-posta adresleri ve kimlik doğrulama ayarları güvenliğiniz gereği sadece <strong className="text-white">Supabase Dashboard</strong> üzerinden yönetilebilir. Ön yüzden sadece kullanıcı davranışlarını, mesajları ve premium yetkilerini takip edebilirsiniz.
-                    </p>
-                  </div>
+                <div className="md:col-span-3 mt-4">
+                  <Alert color="amber" title="Yönetici Notu" icon="info" bgStyle="colored" borderStyle="colored">
+                    Kullanıcıların şifreleri, e-posta adresleri ve kimlik doğrulama ayarları güvenliğiniz gereği sadece <strong className="text-white">Supabase Dashboard</strong> üzerinden yönetilebilir. Ön yüzden sadece kullanıcı davranışlarını, mesajları ve premium yetkilerini takip edebilirsiniz.
+                  </Alert>
                 </div>
               </div>
             )}

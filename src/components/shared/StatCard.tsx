@@ -9,7 +9,8 @@ export default function StatCard({ title, value, desc, colorTheme = 'emerald', i
     emerald: { text: 'text-emerald-400', glow: 'bg-emerald-500/10' },
     orange: { text: 'text-orange-400', glow: 'bg-orange-500/10' },
     rose: { text: 'text-rose-400', glow: 'bg-rose-500/10' },
-    indigo: { text: 'text-indigo-400', glow: 'bg-indigo-500/10' }
+    indigo: { text: 'text-indigo-400', glow: 'bg-indigo-500/10' },
+    gray: { text: 'text-base-content/50', glow: 'bg-base-300/20' }
   };
 
   const theme = themeMap[colorTheme];

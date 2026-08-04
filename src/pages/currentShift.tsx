@@ -399,7 +399,7 @@ export default function CurrentShift() {
                   <label className="label"><span className="label-text font-bold text-base-content/80">Başlangıç Tarihi</span></label>
                   <input
                     type="date"
-                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm"
+                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm p-3"
                     value={reminderStartDate}
                     onChange={(e) => setReminderStartDate(e.target.value)}
                   />
@@ -408,7 +408,7 @@ export default function CurrentShift() {
                   <label className="label"><span className="label-text font-bold text-base-content/80">Bitiş (Opsiyonel)</span></label>
                   <input
                     type="date"
-                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm"
+                    className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 text-sm p-3"
                     value={reminderEndDate}
                     onChange={(e) => setReminderEndDate(e.target.value)}
                     min={reminderStartDate}
@@ -420,7 +420,7 @@ export default function CurrentShift() {
                 <label className="label"><span className="label-text font-bold text-base-content/80">Saat Aralığı (Opsiyonel)</span></label>
                 <input
                   type="text"
-                  className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 placeholder-base-content/30"
+                  className="input input-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 placeholder-base-content/30 p-3"
                   placeholder="Örn: 14:00 - 16:00"
                   value={reminderTimeRange}
                   onChange={(e) => setReminderTimeRange(e.target.value)}
@@ -430,7 +430,7 @@ export default function CurrentShift() {
               <div className="form-control w-full">
                 <label className="label"><span className="label-text font-bold text-base-content/80">Notunuz</span></label>
                 <textarea
-                  className="textarea textarea-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 h-24 pt-3 resize-none"
+                  className="textarea textarea-bordered w-full bg-base-200 focus:ring-2 focus:ring-indigo-500 h-24 p-2 resize-none"
                   placeholder="Mesai talebi, doktor randevusu vs..."
                   value={reminderText}
                   onChange={(e) => setReminderText(e.target.value)}

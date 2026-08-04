@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import Alert from '../components/shared/Alert';
 
 // S.S.S Bilgi Bankası Verileri
 const FAQ_DATA = [
@@ -82,7 +83,7 @@ export default function FAQ() {
     const filteredFaqs = useMemo(() => {
         if (!searchQuery.trim()) return FAQ_DATA;
         const lowerQ = searchQuery.toLowerCase();
-        
+
         return FAQ_DATA.map(category => {
             const filteredQuestions = category.faqs.filter(
                 faq => faq.q.toLowerCase().includes(lowerQ) || faq.a.toLowerCase().includes(lowerQ)
@@ -147,10 +148,11 @@ export default function FAQ() {
                                 <div>
                                     <h4 className="font-bold text-base-content text-lg">Takvimi Doldurmaya Başlayın</h4>
                                     <p className="text-sm text-base-content/70 mt-1"><strong>Mesai Takvimim</strong> sekmesini açın. Geç kaldığınızda, fazla mesaiye kaldığınızda veya yıllık izin kullandığınızda o günün kutucuğuna tıklayıp kaydedin. Geri kalan tüm vardiya ve çalışma günlerinizi sistem otomatik doldurur.</p>
-                                    <p className="text-sm text-base-content/70 text-gray-500 mt-1">
-                                        <br></br>
-                                        <span className="text-red-400 font-bold">⚠️ Sistem Güvenliği:</span> Takvime yasal sınırı aşacak şekilde devamsızlık girerseniz, sistem sizi tazminat riski konusunda takvim altında uyaracaktır.
-                                    </p>
+                                    <div className="mt-6">
+                                        <Alert color="amber" title="Uyarı" icon="warning" borderStyle="colored" bgStyle="colored">
+                                            Takvime yasal sınırı aşacak şekilde devamsızlık girerseniz, sistem sizi tazminat riski konusunda takvim altında uyaracaktır.
+                                        </Alert>
+                                    </div>
                                 </div>
                             </div>
 
@@ -164,11 +166,7 @@ export default function FAQ() {
                         </div>
 
                         {/* SARI KUTU: Meraklıları İçin */}
-                        <div className="mt-8 bg-yellow-900/10 border border-yellow-500/30 rounded-2xl p-6 shadow-inner">
-                            <h4 className="text-lg font-black text-yellow-500 mb-4 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                Daha Meraklıları İçin: Arka Planda Neler Dönüyor?
-                            </h4>
+                        <Alert color="yellow" title="Daha Meraklıları İçin: Arka Planda Neler Dönüyor?" borderStyle="left-colored" bgStyle="colored" icon="info">
                             <div className="space-y-4 text-sm text-yellow-100/80 leading-relaxed">
                                 <p><strong>Döngü Tarihi Neden Önemli?</strong> Sistem, sonsuz bir takvimi hafızasında tutmaz. Sizin Ayarlar'da verdiğiniz "Gündüz" tarihini "0 noktası" kabul eder. Bugüne kadarki aradaki gün farkını bulur, vardiya döngünüze (2'li veya 3'lü) böler ve o gün hangi vardiyada olduğunuzu matematiksel formüllerle anında hesaplar.</p>
                                 <p><strong>Gece Saatleri ve Mola Algoritması:</strong> İş Kanununa göre 20:00 - 06:00 arası gece sayılır. Sistem sizin başlangıç ve bitiş saatlerinizi bu aralıkla çakıştırır. Geceye denk gelen süreyi dakika dakika hesaplar. 4 saati geçen gece çalışmalarında yarım saatlik yemek molasını hakedişten otomatik düşer.</p>
@@ -176,113 +174,94 @@ export default function FAQ() {
                                 <p><strong>Yıllık İzin Geçmiş Eşitlemesi:</strong> Siz sisteme "Benim 14 gün iznim kaldı" dediğinizde, sistem işe giriş tarihinize bakıp "Bu kişi yasal olarak 56 gün izin hak etmiş olmalı, demek ki geçmişte 42 gününü kullanmış" diyerek arka planda eksik günlerinizi veritabanına otomatik eşitler.</p>
                                 <p><strong>Verileriniz Nasıl Korunuyor?</strong> Bilgileriniz basit bir tarayıcı hafızasında (LocalStorage) tutulmaz. Google'ın bulut standartlarında olan Supabase sunucularında, e-posta adresinize bağlanan 64 karakterlik kriptolu kimliklerle (UUID) şifrelenir. Sistemde aktif Row Level Security (Satır Güvenliği) bulunduğu sürece yönetici dahi şifrenizi öğrenemez.</p>
                             </div>
-                        </div>
+                        </Alert>
                     </div>
                 )}
 
-                {/* === İŞÇİ HAKLARI (YASAL) === */}
-                {activeTab === 'rights' && (
-                    <div className="space-y-6 animate-fade-in">
-                        <h3 className="text-xl font-bold text-indigo-400 mb-4 border-b border-base-300 pb-2">Temel Yasal Haklarınız</h3>
+            {/* === İŞÇİ HAKLARI (YASAL) === */}
+            {activeTab === 'rights' && (
+                <div className="space-y-6 animate-fade-in">
+                    <h3 className="text-xl font-bold text-indigo-400 mb-4 border-b border-base-300 pb-2">Temel Yasal Haklarınız</h3>
 
-                        <div className="bg-red-900/10 border-l-4 border-red-500 p-4 rounded-r-lg mb-6">
-                            <h4 className="font-bold text-red-400 mb-1">Tazminatsız Çıkış (Haklı Fesih) Halleri</h4>
-                            <p className="text-sm text-base-content/80">İş Kanunu Madde 25'e göre; işçinin işverenden izin almaksızın <strong>ardı ardına 2 gün</strong> veya bir ayda <strong>toplam 3 gün</strong> işe gitmemesi durumunda işveren işçiyi kıdem tazminatı ödemeden işten çıkarabilir.</p>
+                    <Alert color="red" title="Tazminatsız Çıkış (Haklı Fesih) Halleri" borderStyle="left-colored" bgStyle="colored" icon="none">İş Kanunu Madde 25'e göre; işçinin işverenden izin almaksızın <strong>ardı ardına 2 gün</strong> veya bir ayda <strong>toplam 3 gün</strong> işe gitmemesi durumunda işveren işçiyi kıdem tazminatı ödemeden işten çıkarabilir.</Alert>
+                    <Alert color="red" title="Kıdem Tazminatı" borderStyle="colored" bgStyle="colored" icon="none">Aynı işverene bağlı olarak en az 1 tam yıl çalışmış işçi haklı sebeplerle işten çıkarıldığında veya kendi haklı sebebiyle ayrıldığında, çalıştığı her tam yıl için <strong>30 günlük brüt ücreti</strong> tutarında kıdem tazminatı alır. (Yalnızca binde 7,59 damga vergisi kesilir).</Alert>
+                    <Alert color="amber" title="İhbar Tazminatı" borderStyle="colored" bgStyle="colored" icon="none">İşveren sizi işten çıkarmadan önce çalışma sürenize göre önceden haber vermek zorundadır (6 aya kadar 2 hafta, 3 yıldan fazlaysa 8 hafta vb.). Eğer bu süreyi size kullandırmayıp hemen işten çıkarırsa, bu haftaların ücretini peşin olarak (Gelir + Damga vergisi kesilerek) ödemek zorundadır.</Alert>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <Alert color="emerald" title="Fazla Mesai Ücreti" borderStyle="colored" bgStyle="colored" icon="none">Haftalık 45 saati aşan her çalışma fazla mesaidir ve saat ücreti normal ücretin <strong>%50 fazlası (1.5 katı)</strong> ödenir. Fazla mesaiye kalınan günler için ayrıca yemek ve yol ücreti de ödenmelidir.</Alert>
+                        <Alert color="yellow" title="Resmi Tatil Mesaisi" borderStyle="colored" bgStyle="colored" icon="none">Ulusal bayram ve genel tatil günlerinde çalışan işçiye, çalışmadan hak ettiği 1 günlük ücrete ek olarak <strong>+1 yevmiye daha</strong> ödenir (Toplam 2 yevmiye).</Alert>
+                        <Alert color="pink" title="Yıllık İzin Hakkı" borderStyle="colored" bgStyle="colored" icon="none">İşçinin yıllık izin hakkı, işyerindeki kıdemine göre değişir. 1 yıldan 5 yıla kadar 14 gün, 5 yıldan 15 yıla kadar 20 gün ve 15 yıldan fazla ise 26 gün ücretli izin hakkı vardır.</Alert>
+                        <Alert color="sky" title="Gece Mesaisi" borderStyle="colored" bgStyle="colored" icon="none">İşçilerin gece çalışmaları 7.5 saati geçemez. Vardiyanın yarısından fazlası gece saatlerine (20:00 - 06:00) denk geliyorsa tüm vardiya gece sayılır. Saat başına %1.25 katı fazlası ödenir.</Alert>
+                        <Alert color="indigo" title="Raporlu Günler" borderStyle="colored" bgStyle="colored" icon="none">İşçinin raporlu olduğu günlerde işveren ücret ödemek zorunda değildir. 3 gün ve üzeri raporlarda işçi parasını PTT veya Banka üzerinden SGK'dan alır. İlk 2 günün parasını kimse ödemez.</Alert>
+                        <Alert color="violet" title="Süt İzni" borderStyle="colored" bgStyle="colored" icon="none">Kadın işçilere 1 yaşından küçük çocuklarını emzirmeleri için günde toplam 1.5 saat süt izni verilir. Bu sürenin hangi saatlerde kullanılacağını işçi kendi belirler ve bu süre çalışılmış sayılır.</Alert>
+                    </div>
+                </div>
+            )}
+
+            {/* === YENİ ARAMA MOTORLU S.S.S. === */}
+            {activeTab === 'faq' && (
+                <div className="space-y-6 animate-fade-in">
+
+                    {/* Arama Barı ve Başlık */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-base-300 pb-6">
+                        <div>
+                            <h3 className="text-xl font-bold text-indigo-400">Sıkça Sorulan Sorular</h3>
+                            <p className="text-sm text-base-content/60 mt-1">İş Kanunu, SGK ve İŞKUR hakkında merak ettiklerinizi arayın.</p>
                         </div>
-                        <div className="bg-amber-900/10 p-5 rounded-xl border border-amber-500/30">
-                            <h4 className="font-bold text-amber-500 mb-2">Kıdem Tazminatı</h4>
-                            <p className="text-sm text-base-content/70">Aynı işverene bağlı olarak en az 1 tam yıl çalışmış işçi haklı sebeplerle işten çıkarıldığında veya kendi haklı sebebiyle ayrıldığında, çalıştığı her tam yıl için <strong>30 günlük brüt ücreti</strong> tutarında kıdem tazminatı alır. (Yalnızca binde 7,59 damga vergisi kesilir).</p>
-                        </div>
-                        <div className="bg-amber-900/10 p-5 rounded-xl border border-amber-500/30">
-                            <h4 className="font-bold text-amber-500 mb-2">İhbar Tazminatı</h4>
-                            <p className="text-sm text-base-content/70">İşveren sizi işten çıkarmadan önce çalışma sürenize göre önceden haber vermek zorundadır (6 aya kadar 2 hafta, 3 yıldan fazlaysa 8 hafta vb.). Eğer bu süreyi size kullandırmayıp hemen işten çıkarırsa, bu haftaların ücretini peşin olarak (Gelir + Damga vergisi kesilerek) ödemek zorundadır.</p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div className="bg-base-200 p-5 rounded-xl border border-base-300">
-                                <h4 className="font-bold text-emerald-400 mb-2">Fazla Mesai Ücreti</h4>
-                                <p className="text-sm text-base-content/70">Haftalık 45 saati aşan her çalışma fazla mesaidir ve saat ücreti normal ücretin <strong>%50 fazlası (1.5 katı)</strong> olarak ödenmek zorundadır.</p>
-                            </div>
-                            <div className="bg-base-200 p-5 rounded-xl border border-base-300">
-                                <h4 className="font-bold text-yellow-400 mb-2">Resmi Tatiller</h4>
-                                <p className="text-sm text-base-content/70">Ulusal bayram ve genel tatil günlerinde çalışan işçiye, çalışmadan hak ettiği 1 günlük ücrete ek olarak <strong>+1 yevmiye daha</strong> ödenir (Toplam 2 yevmiye).</p>
-                            </div>
-                            <div className="bg-base-200 p-5 rounded-xl border border-base-300">
-                                <h4 className="font-bold text-pink-400 mb-2">Yıllık İzin Hakkı</h4>
-                                <p className="text-sm text-base-content/70">Aynı işyerinde 1 yılı dolduranlar 14 gün, 5 yıldan fazla çalışanlar 20 gün, 15 yıl ve daha fazla çalışanlar 26 gün yıllık ücretli izin hakkı kazanır.</p>
-                            </div>
-                            <div className="bg-base-200 p-5 rounded-xl border border-base-300">
-                                <h4 className="font-bold text-sky-400 mb-2">Gece Çalışması</h4>
-                                <p className="text-sm text-base-content/70">İşçilerin gece çalışmaları 7.5 saati geçemez. Vardiyanın yarısından fazlası gece saatlerine (20:00 - 06:00) denk geliyorsa tüm vardiya gece sayılır.</p>
-                            </div>
+                        <div className="w-full sm:w-80 relative group">
+                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-400 group-focus-within:text-indigo-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            </span>
+                            <input
+                                type="text"
+                                className="input input-bordered w-full bg-base-200/80 pl-10 focus:ring-2 focus:ring-indigo-500 border-indigo-500/30"
+                                placeholder="Örn: Kıdem, Rapor, Mesai..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
                         </div>
                     </div>
-                )}
 
-                {/* === YENİ ARAMA MOTORLU S.S.S. === */}
-                {activeTab === 'faq' && (
-                    <div className="space-y-6 animate-fade-in">
-                        
-                        {/* Arama Barı ve Başlık */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-base-300 pb-6">
-                            <div>
-                                <h3 className="text-xl font-bold text-indigo-400">Sıkça Sorulan Sorular</h3>
-                                <p className="text-sm text-base-content/60 mt-1">İş Kanunu, SGK ve İŞKUR hakkında merak ettiklerinizi arayın.</p>
-                            </div>
-                            <div className="w-full sm:w-80 relative group">
-                                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-400 group-focus-within:text-indigo-300">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                </span>
-                                <input 
-                                    type="text" 
-                                    className="input input-bordered w-full bg-base-200/80 pl-10 focus:ring-2 focus:ring-indigo-500 border-indigo-500/30" 
-                                    placeholder="Örn: Kıdem, Rapor, Mesai..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
+                    {/* Akordeon Listesi */}
+                    {filteredFaqs.length === 0 ? (
+                        <div className="text-center py-12 bg-base-200 rounded-xl border border-base-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-base-content/20 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <p className="text-base-content/60">Aradığınız kelimeye ait bir soru bulunamadı.</p>
                         </div>
+                    ) : (
+                        filteredFaqs.map((category, catIndex) => {
+                            // Her kategoriye sırayla bir tema rengi ata
+                            const theme = THEMES[catIndex % THEMES.length];
 
-                        {/* Akordeon Listesi */}
-                        {filteredFaqs.length === 0 ? (
-                            <div className="text-center py-12 bg-base-200 rounded-xl border border-base-300">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-base-content/20 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <p className="text-base-content/60">Aradığınız kelimeye ait bir soru bulunamadı.</p>
-                            </div>
-                        ) : (
-                            filteredFaqs.map((category, catIndex) => {
-                                // Her kategoriye sırayla bir tema rengi ata
-                                const theme = THEMES[catIndex % THEMES.length];
-                                
-                                return (
-                                    <div key={catIndex} className="mb-8">
-                                        <h4 className={`font-bold uppercase tracking-wider text-xs mb-3 ml-2 flex items-center gap-2 ${theme.text}`}>
-                                            <span className={`w-2 h-2 rounded-full ${theme.iconBg.replace('/10', '')}`}></span>
-                                            {category.category}
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {category.faqs.map((faq, faqIndex) => (
-                                                <div key={faqIndex} className={`collapse collapse-arrow bg-base-200 border border-base-300 shadow-sm transition-all duration-300 ${theme.borderHover}`}>
-                                                    <input type="checkbox" className="peer" /> 
-                                                    <div className="collapse-title text-base sm:text-md font-bold text-base-content/90 flex items-center gap-3 pr-10 peer-checked:text-base-content">
-                                                        <span className={`${theme.text} ${theme.iconBg} p-1.5 rounded-lg shrink-0`}>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
-                                                        </span>
-                                                        {faq.q}
-                                                    </div>
-                                                    <div className="collapse-content text-sm text-base-content/70 leading-relaxed bg-[#1e2329] pt-4 border-t border-base-300">
-                                                        <p>{faq.a}</p>
-                                                    </div>
+                            return (
+                                <div key={catIndex} className="mb-8">
+                                    <h4 className={`font-bold uppercase tracking-wider text-xs mb-3 ml-2 flex items-center gap-2 ${theme.text}`}>
+                                        <span className={`w-2 h-2 rounded-full ${theme.iconBg.replace('/10', '')}`}></span>
+                                        {category.category}
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {category.faqs.map((faq, faqIndex) => (
+                                            <div key={faqIndex} className={`collapse collapse-arrow bg-base-200 border border-base-300 shadow-sm transition-all duration-300 ${theme.borderHover}`}>
+                                                <input type="checkbox" className="peer" />
+                                                <div className="collapse-title text-base sm:text-md font-bold text-base-content/90 flex items-center gap-3 pr-10 peer-checked:text-base-content">
+                                                    <span className={`${theme.text} ${theme.iconBg} p-1.5 rounded-lg shrink-0`}>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+                                                    </span>
+                                                    {faq.q}
                                                 </div>
-                                            ))}
-                                        </div>
+                                                <div className="collapse-content text-sm text-base-content/70 leading-relaxed bg-[#1e2329] pt-4 border-t border-base-300">
+                                                    <p>{faq.a}</p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                )
-                            })
-                        )}
-                    </div>
-                )}
+                                </div>
+                            )
+                        })
+                    )}
+                </div>
+            )}
 
-            </div>
         </div>
+        </div >
     );
 }
