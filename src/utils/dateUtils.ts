@@ -1,5 +1,6 @@
-// Tarihi her zaman Türkiye/Lokal saat diliminde yyyy-aa-gg formatında döndürür.
-// Gece 00:00 ile 03:00 arasındaki gün kayması bug'ını kalıcı olarak çözer.
+// Tarihi her zaman lokal saat diliminde yyyy-aa-gg formatında döndürür.
+// Gece 00:00 ile 03:00 arasındaki gün kayması bugını kalıcı olarak çözer.
+
 // DÜZELTME: Tüm timezone (saat dilimi) kaymalarını engelleyen yardımcı fonksiyon
 export const getLocalDateString = (d: Date) => {
   const year = d.getFullYear();
@@ -13,3 +14,17 @@ export const getLocalDateString = (d: Date) => {
 export const getFormattedMonthYear = (date: Date): string => {
   return new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(date);
 };
+
+export const formatWeekRange = (start: Date, end: Date) => {
+  const startDay = start.getDate();
+  const startMonth = start.toLocaleDateString('tr-TR', { month: 'long' });
+  const endDay = end.getDate();
+  const endMonth = end.toLocaleDateString('tr-TR', { month: 'long' });
+
+  if (startMonth === endMonth) {
+    return `${startDay} - ${endDay} ${startMonth}`;
+  } else {
+    return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+  }
+}
+

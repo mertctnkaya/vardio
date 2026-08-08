@@ -1,3 +1,16 @@
+export interface NotificationPreferences {
+  shift_changes: boolean;
+  holidays: boolean;
+  reminders: boolean;
+  payroll: boolean;
+  risks: boolean;
+  annual_leave: boolean;
+  daily_log: boolean;
+  weekly_summary: boolean;
+  night_shift_health: boolean;
+  app_updates: boolean;
+}
+
 export interface UserSettings {
   id?: string;
   user_id?: string;
@@ -15,6 +28,7 @@ export interface UserSettings {
   shift_end_time: string;
   shift_duration: number;
   role: 'user' | 'admin';
+  notification_preferences?: NotificationPreferences;
 }
 
 export interface Reminder {

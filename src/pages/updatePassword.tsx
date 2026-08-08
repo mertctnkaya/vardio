@@ -14,7 +14,7 @@ export default function UpdatePassword() {
     // GÜVENLİK VE UX KONTROLÜ: 
     // Kullanıcı url'ye elle mi yazdı, yoksa e-postadaki linkten mi geldi?
     // E-postadan gelen linklerin URL'sinde "#access_token=" veya "type=recovery" gibi gizli hash'ler olur.
-    // Eğer kullanıcı giriş yapmamışsa VE url'de o gizli şifreler yoksa, kapı dışarı et!
+    // Eğer kullanıcı giriş yapmamışsa VE url'de o gizli şifreler yoksa login sayfasına yönlendir.
     const hash = window.location.hash;
     if (!user && !hash.includes('access_token') && !hash.includes('recovery')) {
       navigate('/login');

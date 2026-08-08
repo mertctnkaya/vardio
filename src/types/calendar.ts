@@ -25,3 +25,46 @@ export interface SelectedDayInfo {
   isCurrentMonth: boolean;
   shiftId: number;
 }
+
+export interface CalendarHeaderProps {
+  baseDate: Date;
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
+}
+
+export interface CalendarGridProps {
+  calendarDays: any[];
+  getShiftForDate: (date: Date) => any;
+  actualToday: Date;
+  employmentStartDate: Date;
+  workLogs: Record<string, any>;
+  onDayClick: (dayData: DayDetail, isBeforeEmployment: boolean) => void;
+}
+
+export interface CalendarStatsProps {
+  monthlyStats: {
+    normal: number;
+    overtimeHours: number;
+    lateHours: number;
+    absent: number;
+    leave: number;
+    annualLeave: number;
+    holidayWork: number;
+    weekendPaid: number;
+    isDangerAbsent: boolean;
+    maxConsecutiveAbsent: number;
+  };
+  baseDate: Date;
+}
+
+export interface DayActionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedDay: DayDetail | null;
+  existingLog: any;
+  actualToday: Date;
+  user: any;
+  onUpdateLog: (dateKey: string, data: any) => void;
+  onDeleteLog: (dateKey: string) => void;
+}

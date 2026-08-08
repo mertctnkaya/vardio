@@ -3,3 +3,8 @@ export * from './calendar';
 export * from './calculations';
 export * from './ui';
 export * from './common';
+export * from './settings';
+export * from './weeklist';
+export * from './currentShift';
+export * from './layout';
+export * from './admin';

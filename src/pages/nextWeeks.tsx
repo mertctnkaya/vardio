@@ -1,23 +1,11 @@
 import { useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
-
-function formatWeekRange(start: Date, end: Date) {
-  const startDay = start.getDate();
-  const startMonth = start.toLocaleDateString('tr-TR', { month: 'long' });
-  const endDay = end.getDate();
-  const endMonth = end.toLocaleDateString('tr-TR', { month: 'long' });
-
-  if (startMonth === endMonth) {
-    return `${startDay} - ${endDay} ${startMonth}`;
-  } else {
-    return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
-  }
-}
+import WeekList from '../components/next-weeks/WeekList';
 
 export default function NextWeeks() {
   const { settings } = useAppStore();
 
-  // Ayarlardan okuyup tam 10 haftalık listeyi anında oluşturan motor
+  // Ayarlardan okuyup tam 10 haftalık listeyi oluşturan motor
   const upcomingWeeks = useMemo(() => {
     const list = [];
     const today = new Date();
@@ -35,7 +23,7 @@ export default function NextWeeks() {
     const workType = settings?.work_type || '3-shift';
     const MS_PER_WEEK = 1000 * 60 * 60 * 24 * 7;
 
-    // 10 haftalık döngü (Sen istersen buradaki i < 10 sayısını 15-20 yapabilirsin)
+    // 10 haftalık döngü
     for (let i = 0; i < 10; i++) {
       const weekStart = new Date(currentMonday);
       weekStart.setDate(currentMonday.getDate() + (i * 7));
@@ -70,37 +58,7 @@ export default function NextWeeks() {
         </div>
       </div>
 
-      <div className="card bg-[#16191d] shadow-xl border border-base-300 w-full max-w-4xl">
-        <div className="card-body p-4 sm:p-8">
-          
-          <div className="flex flex-col gap-3">
-            {upcomingWeeks.map((item, index) => {
-              const dateString = formatWeekRange(item.weekStart, item.weekEnd);
-              const isCurrentWeek = index === 0; 
-              
-              return (
-                <div 
-                  key={index} 
-                  className={`p-4 rounded-xl text-center text-lg font-medium border flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 transition-all
-                    ${isCurrentWeek 
-                      ? 'bg-indigo-900/20 border-indigo-500/30 text-indigo-400 shadow-md' 
-                      : 'bg-base-200 border-base-300 text-base-content/80 hover:bg-base-300'}`
-                  }
-                >
-                  <span className="w-48 text-right hidden sm:block">{dateString}</span>
-                  <span className="sm:hidden">{dateString}</span>
-                  
-                  <span className="hidden sm:block opacity-50">-</span>
-                  
-                  <span className={`w-48 text-left ${isCurrentWeek ? 'font-bold' : ''}`}>
-                    {item.shiftName}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <WeekList upcomingWeeks={upcomingWeeks} />
     </div>
   );
 }
